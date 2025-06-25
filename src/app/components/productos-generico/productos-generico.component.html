@@ -1,0 +1,18 @@
+<div class="container py-4 text-white">
+  <h2 class="mb-4">{{ titulo }}</h2>
+  <p>{{ texto }}</p>
+  <div class="row g-3">
+    <div class="col-md-4" *ngFor="let item of productos">
+      <div class="card h-100 bg-dark text-white">
+        <img [src]="item.img" class="card-img-top img-escalada" [alt]="item.nombre" />
+        <div class="card-body">
+          <h5 class="card-title">{{ item.nombre }}</h5>
+          <p class="card-text">{{ item.descripcion }}</p>
+        </div>
+                <div class="card-footer text-white">
+          <p class="text-white">${{ item.precio }}</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

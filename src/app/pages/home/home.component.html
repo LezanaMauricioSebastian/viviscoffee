@@ -1,0 +1,19 @@
+<img src="assets/fondo.jpeg" alt="Un café bien fachero" class="imagen-cafe">
+<div class="container py-4">
+    <h1 class="text-white text-center">Ofertas del Dia</h1>
+
+    <div class="row g-3">
+    <div class="col-md-4" *ngFor="let item of ofertas">
+      <div class="card text-white" style="background-color: #25444F;">
+        <img [src]="item.img" class="card-img-top" [alt]="item.nombre">
+        <div class="card-body">
+          <h5 class="card-title">{{ item.nombre }}</h5>
+          <p class="card-text">{{ item.descripcion }}</p>
+        </div>
+        <div class="card-footer text-white">
+          <p class="text-white">${{ item.precio }}</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

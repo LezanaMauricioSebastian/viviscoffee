@@ -1,0 +1,26 @@
+.imagen-cafe {
+  width: 100%;
+  height: auto;
+  display: block;
+    margin: 0 auto;
+    z-index: 1; /* Asegura que la imagen esté detrás del contenido principal */
+}
+.container{
+  background-color: #18333F;
+}
+.ofertas-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1rem;
+  padding: 1.5rem;
+}
+
+.oferta-card img {
+  height: 200px;
+  object-fit: cover;
+}
+.card-img-top {
+  height: 300px; /* o el alto que prefieras */
+  object-fit: cover;
+  object-position: center;
+}

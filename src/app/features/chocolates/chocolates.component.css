@@ -1,0 +1,6 @@
+.img-escalada {
+  height: 180px; /* O el alto que te guste */
+  width: 100%;   /* Para que se adapte al contenedor */
+  object-fit: cover; /* ¡La magia! recorta lo que sobra sin deformar */
+  object-position: center;
+}

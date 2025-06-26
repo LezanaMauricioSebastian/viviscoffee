@@ -1,4 +1,5 @@
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
+import { SheetsCsvService } from '../../sheet-csv.service';
 
 @Component({
   selector: 'app-box',
@@ -10,33 +11,21 @@ import { Component } from '@angular/core';
     ></app-productos-generico>
   `,
 })
-export class BoxComponent {
-  cajas = [
-    {
-      nombre: 'Caja de bombones',
-      descripcion: 'Una selección de los mejores bombones.',
-      img: 'assets/box_1.jpeg',
-      precio: 2500
-    },
-    {
-      nombre: 'Caja de chocolates',
-      descripcion: 'Una selección de los mejores chocolates.',
-      img: 'assets/box_2.jpeg',
-      precio: 3000
-    },
-    {
-      nombre: 'Caja de bombones',
-      descripcion: 'Una selección de los mejores bombones.',
-      img: 'assets/box_3.jpeg',
-      precio: 2500
-    },
-    
-    {
-      nombre: 'Caja de Alfajores Block',
-      descripcion: 'Una selección de los mejores chocolates.',
-      img: 'assets/boxblock.jpeg',
-      precio: 3000
-    },
-  ];
+export class BoxComponent implements OnInit{
+
+    constructor(private sheetsCsv: SheetsCsvService) {}
+    cajas:any[]=[]
+    ngOnInit() {
+      this.sheetsCsv.getProductos().subscribe(data => {
+        const productos = data.slice(7, 11);
+        this.cajas= productos.map(item => ({
+          id: item[''],
+          nombre: item._1,
+          precio: item._2,
+          descripcion: item._3,
+          img: item._4 // si tienes imagen en el CSV, si no, puedes omitirlo
+        }));
+      });
+    }
   
 }

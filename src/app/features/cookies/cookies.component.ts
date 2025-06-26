@@ -1,4 +1,5 @@
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
+import { SheetsCsvService } from '../../sheet-csv.service';
 
 @Component({
   selector: 'app-cookies',
@@ -10,38 +11,19 @@ import { Component } from '@angular/core';
     ></app-productos-generico>
   `,
 })
-export class CookiesComponent {
-  cookies = [
-    {
-      nombre: 'Cookie de Chocolate',
-      descripcion: 'Deliciosa galleta de chocolate.',
-      img: 'assets/cookie0.jpeg',
-      precio: 1000
-    },
-    {
-      nombre: 'Cookie de Vainilla',
-      descripcion: 'Suave galleta de vainilla.',
-      img: 'assets/cookie1.jpeg',
-      precio: 1000
-    },
-    {
-      nombre: 'Cookie de Avena',
-      descripcion: 'Saludable galleta de avena.',
-      img: 'assets/cookie2.jpeg',
-      precio: 1000
-    },
-    {
-      nombre: 'Cookie de Avena',
-      descripcion: 'Saludable galleta de avena.',
-      img: 'assets/cookie3.jpeg',
-      precio: 1000
-    },
-    {
-      nombre: 'Cookie de Avena',
-      descripcion: 'Saludable galleta de avena.',
-      img: 'assets/cookie4.jpeg',
-      precio: 1000
-    },
-
-  ];
+export class CookiesComponent implements OnInit{
+  constructor(private sheetsCsv: SheetsCsvService) {}
+    cookies:any[]=[]
+    ngOnInit() {
+        this.sheetsCsv.getProductos().subscribe(data => {
+          const productos = data.slice(11, 16);
+          this.cookies= productos.map(item => ({
+            id: item[''],
+            nombre: item._1,
+            precio: item._2,
+            descripcion: item._3,
+            img: item._4 // si tienes imagen en el CSV, si no, puedes omitirlo
+          }));
+        });
+      }
 }

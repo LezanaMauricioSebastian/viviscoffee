@@ -15,31 +15,31 @@ export class CookiesComponent {
     {
       nombre: 'Cookie de Chocolate',
       descripcion: 'Deliciosa galleta de chocolate.',
-      img: '../../../assets/cookie0.jpeg',
+      img: 'assets/cookie0.jpeg',
       precio: 1000
     },
     {
       nombre: 'Cookie de Vainilla',
       descripcion: 'Suave galleta de vainilla.',
-      img: '../../../assets/cookie1.jpeg',
+      img: 'assets/cookie1.jpeg',
       precio: 1000
     },
     {
       nombre: 'Cookie de Avena',
       descripcion: 'Saludable galleta de avena.',
-      img: '../../../assets/cookie2.jpeg',
+      img: 'assets/cookie2.jpeg',
       precio: 1000
     },
     {
       nombre: 'Cookie de Avena',
       descripcion: 'Saludable galleta de avena.',
-      img: '../../../assets/cookie3.jpeg',
+      img: 'assets/cookie3.jpeg',
       precio: 1000
     },
     {
       nombre: 'Cookie de Avena',
       descripcion: 'Saludable galleta de avena.',
-      img: '../../../assets/cookie4.jpeg',
+      img: 'assets/cookie4.jpeg',
       precio: 1000
     },
 

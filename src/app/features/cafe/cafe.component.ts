@@ -14,13 +14,13 @@ export class CafeComponent {
     {
       nombre: 'Café en Saquito',
       descripcion: 'Un café fuerte y aromático.',
-      img: '../../../assets/caje_saquito.jpeg',
+      img: 'assets/caje_saquito.jpeg',
       precio: 1200
     },
     {
       nombre: 'Café con Leche',
       descripcion: 'Suave y cremoso, con un toque de leche.',
-      img: '../../../assets/Tasa de cafe.jpeg',
+      img: 'assets/Tasa de cafe.jpeg',
       precio: 1500
     },
 

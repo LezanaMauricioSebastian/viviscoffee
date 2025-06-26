@@ -15,7 +15,7 @@ export class ChocolatesComponent {
     {
       nombre: 'Chocolate',
       descripcion: 'Crujiente, intenso, inolvidable.',
-      img: '../../../assets/Chocolate_grande.jpeg',
+      img: 'assets/Chocolate_grande.jpeg',
       precio: 1500
     },
   ];

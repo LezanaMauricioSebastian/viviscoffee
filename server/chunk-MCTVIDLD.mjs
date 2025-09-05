@@ -1,0 +1,2 @@
+import './polyfills.server.mjs';
+import{Ia as r,m as o,oa as n,s as i}from"./chunk-I4SYLVBA.mjs";import"./chunk-VVCT4QZE.mjs";var u=[],s=(()=>{class t{static{this.\u0275fac=function(e){return new(e||t)}}static{this.\u0275mod=i({type:t})}static{this.\u0275inj=o({imports:[r.forChild(u),r]})}}return t})();var p=(()=>{class t{static{this.\u0275fac=function(e){return new(e||t)}}static{this.\u0275mod=i({type:t})}static{this.\u0275inj=o({imports:[n,s]})}}return t})();export{p as ContactModule};

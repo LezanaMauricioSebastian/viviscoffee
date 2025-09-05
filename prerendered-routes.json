@@ -1,0 +1,14 @@
+{
+  "routes": [
+    "/",
+    "/about",
+    "/box",
+    "/cafe",
+    "/chocolates",
+    "/contact",
+    "/cookies",
+    "/menu",
+    "/salado",
+    "/vegan"
+  ]
+}

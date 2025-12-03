@@ -13,7 +13,7 @@
         "build": {
           "builder": "@angular-devkit/build-angular:application",
           "options": {
-            "baseHref": "/",
+            "baseHref": "/viviscoffee/",
             "outputPath": "dist/vivis",
             "index": "src/index.html",
             "browser": "src/main.ts",

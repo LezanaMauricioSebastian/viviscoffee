@@ -12,10 +12,11 @@ import { MatListModule } from '@angular/material/list';
 import { LocationStrategy, HashLocationStrategy } from '@angular/common';
 import { SheetsCsvService } from './sheet-csv.service';
 import { HttpClientModule } from '@angular/common/http';
+import { WhatsappWidgetComponent } from './shared/whatsapp-widget/whatsapp-widget.component';
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [CommonModule, RouterOutlet, NavbarComponent, FooterComponent,  MatToolbarModule, MatButtonModule, MatIconModule, MatSidenavModule, MatListModule, LayoutModule,HttpClientModule],
+  imports: [CommonModule, RouterOutlet, NavbarComponent, FooterComponent,  MatToolbarModule, MatButtonModule, MatIconModule, MatSidenavModule, MatListModule, LayoutModule,HttpClientModule, WhatsappWidgetComponent],
   templateUrl: './app.component.html',
   styleUrl: './app.component.css',
   providers: [{ provide: LocationStrategy, useClass: HashLocationStrategy }]

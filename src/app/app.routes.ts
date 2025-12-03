@@ -9,5 +9,7 @@ export const routes: Routes = [
   { path: 'cookies', loadChildren: () => import('./features/cookies/cookies.module').then(m => m.CookiesModule) },
   { path: 'about', loadChildren: () => import('./pages/about/about.module').then(m => m.AboutModule) },
   { path: 'contact', loadChildren: () => import('./pages/contact/contact.module').then(m => m.ContactModule) },
+  { path: 'salado', loadChildren: () => import('./features/salado/salado.module').then(m => m.SaladoModule) },
+  { path: 'vegan',loadChildren: () => import('./features/vegan/vegan.module').then(m => m.VeganModule) },
   { path: '**', redirectTo: '' }
 ];

@@ -16,7 +16,9 @@ export class CookiesComponent implements OnInit{
     cookies:any[]=[]
     ngOnInit() {
         this.sheetsCsv.getProductos().subscribe(data => {
-          const productos = data.slice(11, 16);
+          const productos1 = data.slice(11, 18);
+          const productos2=data.slice(30,35)
+          const productos = [...productos1, ...productos2];
           this.cookies= productos.map(item => ({
             id: item[''],
             nombre: item._1,

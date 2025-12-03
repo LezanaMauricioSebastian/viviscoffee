@@ -15,14 +15,15 @@ export class ChocolatesComponent implements OnInit{
     chocolates:any[]=[]
     ngOnInit() {
     this.sheetsCsv.getProductos().subscribe(data => {
-      // Toma los productos de los índices 5 y 6 (recuerda que el 0 es cabecera)
-      const productos = data.slice(6, 7); // 6 y 7 (ambos incluidos)
+      const productos1 = data.slice(6, 7);    // índice 6 (solo el 6, porque slice no incluye el final)
+      const productos2 = data.slice(18, 19);  // índices 17 y 18 (el 19 no se incluye)
+      const productos = [...productos1, ...productos2];
       this.chocolates = productos.map(item => ({
         id: item[''],
         nombre: item._1,
         precio: item._2,
         descripcion: item._3,
-        img: item._4 // si tienes imagen en el CSV, si no, puedes omitirlo
+        img: item._4
       }));
     });
   }

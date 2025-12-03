@@ -17,7 +17,9 @@ export class BoxComponent implements OnInit{
     cajas:any[]=[]
     ngOnInit() {
       this.sheetsCsv.getProductos().subscribe(data => {
-        const productos = data.slice(7, 11);
+        const productos1 = data.slice(7, 11);
+        const productos2 = data.slice(25,26)
+        const productos = [...productos1, ...productos2];
         this.cajas= productos.map(item => ({
           id: item[''],
           nombre: item._1,

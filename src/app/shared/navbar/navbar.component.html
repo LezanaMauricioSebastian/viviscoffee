@@ -20,6 +20,18 @@
     <!-- Menú -->
     <div class="collapse navbar-collapse" id="navbarCafe">
       <ul class="navbar-nav ms-auto mb-2 mb-lg-0">
+        @if (auth.isLoggedIn()) {
+          <li class="nav-item">
+            <a class="nav-link" routerLink="/admin">Admin</a>
+          </li>
+          <li class="nav-item">
+            <button class="nav-link btn btn-link" (click)="logout()">Cerrar sesión</button>
+          </li>
+        } @else {
+          <li class="nav-item">
+            <a class="nav-link" routerLink="/login">Iniciar sesión</a>
+          </li>
+        }
         <li class="nav-item">
           <a class="nav-link" routerLink="/">Inicio</a>
         </li>

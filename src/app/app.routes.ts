@@ -1,6 +1,11 @@
 import { Routes } from '@angular/router';
+import { authGuard } from './core/guards/auth.guard';
+import { LoginComponent } from './pages/login/login.component';
+import { AdminComponent } from './pages/admin/admin.component';
 
 export const routes: Routes = [
+  { path: 'login', component: LoginComponent },
+  { path: 'admin', component: AdminComponent, canActivate: [authGuard] },
   { path: '', loadChildren: () => import('./pages/home/home.module').then(m => m.HomeModule) },
   { path: 'menu', loadChildren: () => import('./pages/menu/menu.module').then(m => m.MenuModule) },
   { path: 'chocolates', loadChildren: () => import('./features/chocolates/chocolates.module').then(m => m.ChocolatesModule) },
@@ -10,6 +15,6 @@ export const routes: Routes = [
   { path: 'about', loadChildren: () => import('./pages/about/about.module').then(m => m.AboutModule) },
   { path: 'contact', loadChildren: () => import('./pages/contact/contact.module').then(m => m.ContactModule) },
   { path: 'salado', loadChildren: () => import('./features/salado/salado.module').then(m => m.SaladoModule) },
-  { path: 'vegan',loadChildren: () => import('./features/vegan/vegan.module').then(m => m.VeganModule) },
+  { path: 'vegan', loadChildren: () => import('./features/vegan/vegan.module').then(m => m.VeganModule) },
   { path: '**', redirectTo: '' }
 ];

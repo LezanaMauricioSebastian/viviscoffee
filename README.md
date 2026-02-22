@@ -2,6 +2,16 @@
 
 This project was generated with [Angular CLI](https://github.com/angular/angular-cli) version 17.0.5.
 
+## Supabase
+
+El proyecto usa Supabase para autenticación. Todas las rutas (excepto `/login`) requieren estar logeado.
+
+**Configuración:**
+1. Copia tus credenciales de Supabase (Project URL y anon key) desde el dashboard de tu proyecto.
+2. Edita `src/environments/environment.ts` y `src/environments/environment.development.ts`:
+   - Reemplaza `TU_PROYECTO.supabase.co` con tu Project URL
+   - Reemplaza `TU_ANON_KEY` con tu anon/public key
+
 ## Development server
 
 Run `ng serve` for a dev server. Navigate to `http://localhost:4200/`. The application will automatically reload if you change any of the source files.

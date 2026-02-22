@@ -10,23 +10,16 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatSidenavModule } from '@angular/material/sidenav';
 import { MatListModule } from '@angular/material/list';
 import { LocationStrategy, HashLocationStrategy } from '@angular/common';
-import { SheetsCsvService } from './sheet-csv.service';
-import { HttpClientModule } from '@angular/common/http';
 import { WhatsappWidgetComponent } from './shared/whatsapp-widget/whatsapp-widget.component';
+
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [CommonModule, RouterOutlet, NavbarComponent, FooterComponent,  MatToolbarModule, MatButtonModule, MatIconModule, MatSidenavModule, MatListModule, LayoutModule,HttpClientModule, WhatsappWidgetComponent],
+  imports: [CommonModule, RouterOutlet, NavbarComponent, FooterComponent, MatToolbarModule, MatButtonModule, MatIconModule, MatSidenavModule, MatListModule, LayoutModule, WhatsappWidgetComponent],
   templateUrl: './app.component.html',
   styleUrl: './app.component.css',
   providers: [{ provide: LocationStrategy, useClass: HashLocationStrategy }]
 })
 export class AppComponent {
-  constructor(private datos_csv: SheetsCsvService) {}
-  ngOnInit() {
-    this.datos_csv.getProductos().subscribe(data => {
-      console.log(data);
-    });
-  }
   title = 'vivis';
 }

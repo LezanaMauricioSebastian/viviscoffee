@@ -1,29 +1,23 @@
-import { Component } from '@angular/core';
-import { SheetsCsvService } from '../../sheet-csv.service';
+import { Component, OnInit } from '@angular/core';
+import { ProductosService } from '../../core/services/productos.service';
 
 @Component({
   selector: 'app-vegan',
   template: `
     <app-productos-generico
       [titulo]="'Vegan'"
-  
       [productos]="vegan"
     ></app-productos-generico>
   `,
 })
-export class VeganComponent {
+export class VeganComponent implements OnInit {
   vegan: any[] = [];
-  constructor(private sheetsCsv: SheetsCsvService) {}
+
+  constructor(private productos: ProductosService) {}
+
   ngOnInit() {
-    this.sheetsCsv.getProductos().subscribe(data => {
-      const productos = data.slice(27, 28);
-      this.vegan = productos.map(item => ({
-        id: item[''],
-        nombre: item._1,
-        precio: item._2,
-        descripcion: item._3,
-        img: item._4
-      }));
+    this.productos.getProductos('vegan').subscribe(data => {
+      this.vegan = data;
     });
   }
 }

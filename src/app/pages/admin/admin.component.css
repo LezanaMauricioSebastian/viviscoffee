@@ -1,0 +1,20 @@
+.modal {
+  backdrop-filter: blur(2px);
+}
+
+.nav-tabs {
+  border-bottom-color: rgba(255,255,255,.2);
+}
+.nav-tabs .nav-link {
+  color: rgba(255,255,255,.7);
+  border-color: transparent;
+}
+.nav-tabs .nav-link:hover {
+  color: #fff;
+  border-color: rgba(255,255,255,.2);
+}
+.nav-tabs .nav-link.active {
+  color: #fff;
+  background-color: rgba(255,255,255,.1);
+  border-color: rgba(255,255,255,.2);
+}

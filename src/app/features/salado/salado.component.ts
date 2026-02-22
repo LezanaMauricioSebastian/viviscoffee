@@ -1,5 +1,5 @@
-import { Component ,OnInit} from '@angular/core';
-import { SheetsCsvService } from '../../sheet-csv.service';
+import { Component, OnInit } from '@angular/core';
+import { ProductosService } from '../../core/services/productos.service';
 
 @Component({
   selector: 'app-salado',
@@ -10,19 +10,14 @@ import { SheetsCsvService } from '../../sheet-csv.service';
     ></app-productos-generico>
   `,
 })
-export class SaladoComponent {
+export class SaladoComponent implements OnInit {
   salado: any[] = [];
-  constructor(private sheetsCsv: SheetsCsvService) {}
+
+  constructor(private productos: ProductosService) {}
+
   ngOnInit() {
-    this.sheetsCsv.getProductos().subscribe(data => {
-      const productos = data.slice(26, 27);
-      this.salado = productos.map(item => ({
-        id: item[''],
-        nombre: item._1,
-        precio: item._2,
-        descripcion: item._3,
-        img: item._4
-      }));
+    this.productos.getProductos('salado').subscribe(data => {
+      this.salado = data;
     });
   }
 }

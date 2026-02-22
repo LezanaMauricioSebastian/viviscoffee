@@ -1,5 +1,5 @@
 import { Component, OnInit } from '@angular/core';
-import { SheetsCsvService } from '../../sheet-csv.service';
+import { ProductosService } from '../../core/services/productos.service';
 
 @Component({
   selector: 'app-cookies',
@@ -11,21 +11,14 @@ import { SheetsCsvService } from '../../sheet-csv.service';
     ></app-productos-generico>
   `,
 })
-export class CookiesComponent implements OnInit{
-  constructor(private sheetsCsv: SheetsCsvService) {}
-    cookies:any[]=[]
-    ngOnInit() {
-        this.sheetsCsv.getProductos().subscribe(data => {
-          const productos1 = data.slice(11, 18);
-          const productos2=data.slice(30,35)
-          const productos = [...productos1, ...productos2];
-          this.cookies= productos.map(item => ({
-            id: item[''],
-            nombre: item._1,
-            precio: item._2,
-            descripcion: item._3,
-            img: item._4 // si tienes imagen en el CSV, si no, puedes omitirlo
-          }));
-        });
-      }
+export class CookiesComponent implements OnInit {
+  cookies: any[] = [];
+
+  constructor(private productos: ProductosService) {}
+
+  ngOnInit() {
+    this.productos.getProductos('cookies').subscribe(data => {
+      this.cookies = data;
+    });
+  }
 }

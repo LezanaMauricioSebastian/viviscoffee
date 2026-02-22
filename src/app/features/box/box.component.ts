@@ -1,9 +1,8 @@
 import { Component, OnInit } from '@angular/core';
-import { SheetsCsvService } from '../../sheet-csv.service';
+import { ProductosService } from '../../core/services/productos.service';
 
 @Component({
   selector: 'app-box',
-
   template: `
     <app-productos-generico
       [titulo]="'Cajas'"
@@ -11,23 +10,14 @@ import { SheetsCsvService } from '../../sheet-csv.service';
     ></app-productos-generico>
   `,
 })
-export class BoxComponent implements OnInit{
+export class BoxComponent implements OnInit {
+  cajas: any[] = [];
 
-    constructor(private sheetsCsv: SheetsCsvService) {}
-    cajas:any[]=[]
-    ngOnInit() {
-      this.sheetsCsv.getProductos().subscribe(data => {
-        const productos1 = data.slice(7, 11);
-        const productos2 = data.slice(25,26)
-        const productos = [...productos1, ...productos2];
-        this.cajas= productos.map(item => ({
-          id: item[''],
-          nombre: item._1,
-          precio: item._2,
-          descripcion: item._3,
-          img: item._4 // si tienes imagen en el CSV, si no, puedes omitirlo
-        }));
-      });
-    }
-  
+  constructor(private productos: ProductosService) {}
+
+  ngOnInit() {
+    this.productos.getProductos('box').subscribe(data => {
+      this.cajas = data;
+    });
+  }
 }

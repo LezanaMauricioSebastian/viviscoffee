@@ -1,5 +1,5 @@
 import { Component, OnInit } from '@angular/core';
-import { SheetsCsvService } from '../../sheet-csv.service';
+import { ProductosService } from '../../core/services/productos.service';
 
 @Component({
   selector: 'app-home',
@@ -9,20 +9,11 @@ import { SheetsCsvService } from '../../sheet-csv.service';
 export class HomeComponent implements OnInit {
   ofertas: any[] = [];
 
-  constructor(private sheetsCsv: SheetsCsvService) {}
+  constructor(private productos: ProductosService) {}
 
   ngOnInit() {
-    this.sheetsCsv.getProductos().subscribe(data => {
-      const productos = data.slice(1, 4); // del índice 1 al 3 incluidos
-
-    // Si quieres mapear los campos a nombres más claros:
-      this.ofertas = productos.map(item => ({
-        id: item[''],
-        nombre: item._1,
-        precio: item._2,
-        descripcion: item._3,
-        img: item._4
-      }));
+    this.productos.getProductos('promo').subscribe(data => {
+      this.ofertas = data;
     });
   }
 }

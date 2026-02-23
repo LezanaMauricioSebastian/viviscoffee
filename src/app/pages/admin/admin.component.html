@@ -70,16 +70,23 @@
 
   <!-- Tab Compras -->
   @if (tab === 'compras') {
-    <div class="mb-4">
+    <div class="mb-4 d-flex flex-wrap align-items-center gap-2">
       <button class="btn btn-primary" (click)="abrirNuevoCompra()">Nueva compra</button>
+      <select class="form-select form-select-sm" style="max-width: 140px" [(ngModel)]="periodo" (ngModelChange)="onPeriodoChange()">
+        <option value="mensual">Mensual</option>
+        <option value="semestral">Semestral</option>
+        <option value="total">Total</option>
+      </select>
     </div>
 
     @if (loadingCompras) {
       <p class="text-white-50">Cargando compras...</p>
     } @else if (compras.length === 0) {
       <p class="text-white-50">No hay compras registradas.</p>
+    } @else if (comprasFiltradas.length === 0) {
+      <p class="text-warning mb-2">No hay compras en este período. Probá seleccionar "Total" para ver todo.</p>
     } @else {
-      <p class="text-success mb-2"><strong>Total compras: ${{ totalCompras() | number }}</strong></p>
+      <p class="text-success mb-2"><strong>Total compras ({{ periodo }}): ${{ totalCompras() | number }}</strong></p>
       <div class="table-responsive">
         <table class="table table-dark table-striped">
           <thead>
@@ -92,9 +99,9 @@
             </tr>
           </thead>
           <tbody>
-            @for (c of compras; track c.id) {
+            @for (c of comprasFiltradas; track c.id) {
               <tr>
-                <td>{{ c.fecha }}</td>
+                <td>{{ normalizarFecha(c.fecha) || c.fecha }}</td>
                 <td>{{ c.concepto }}</td>
                 <td>{{ c.cantidad }} {{ c.unidad }}</td>
                 <td>${{ c.monto }}</td>
@@ -112,16 +119,23 @@
 
   <!-- Tab Ventas -->
   @if (tab === 'ventas') {
-    <div class="mb-4">
+    <div class="mb-4 d-flex flex-wrap align-items-center gap-2">
       <button class="btn btn-primary" (click)="abrirNuevoVenta()">Nueva venta</button>
+      <select class="form-select form-select-sm" style="max-width: 140px" [(ngModel)]="periodo" (ngModelChange)="onPeriodoChange()">
+        <option value="mensual">Mensual</option>
+        <option value="semestral">Semestral</option>
+        <option value="total">Total</option>
+      </select>
     </div>
 
     @if (loadingVentas) {
       <p class="text-white-50">Cargando ventas...</p>
     } @else if (ventas.length === 0) {
       <p class="text-white-50">No hay ventas registradas.</p>
+    } @else if (ventasFiltradas.length === 0) {
+      <p class="text-warning mb-2">No hay ventas en este período. Probá seleccionar "Total" para ver todo.</p>
     } @else {
-      <p class="text-success mb-2"><strong>Total ventas: ${{ totalVentas() | number }}</strong></p>
+      <p class="text-success mb-2"><strong>Total ventas ({{ periodo }}): ${{ totalVentas() | number }}</strong></p>
       <div class="table-responsive">
         <table class="table table-dark table-striped">
           <thead>
@@ -133,9 +147,9 @@
             </tr>
           </thead>
           <tbody>
-            @for (v of ventas; track v.id) {
+            @for (v of ventasFiltradas; track v.id) {
               <tr>
-                <td>{{ v.fecha }}</td>
+                <td>{{ normalizarFecha(v.fecha) || v.fecha }}</td>
                 <td>${{ v.monto }}</td>
                 <td>{{ v.detalle }}</td>
                 <td>
@@ -148,6 +162,76 @@
         </table>
       </div>
     }
+  }
+
+  <!-- Gráfico y bloque recuperación -->
+  @if (tab === 'compras' || tab === 'ventas') {
+    @if (!loadingCompras && !loadingVentas) {
+      <div class="card bg-dark border-secondary mt-4">
+        <div class="card-body">
+          <h6 class="card-title text-info mb-3">Ventas vs Compras</h6>
+          <div class="ventas-compras-chart-container">
+            <canvas #chartCanvas></canvas>
+          </div>
+        </div>
+      </div>
+    }
+    <div class="card bg-dark border-secondary mt-4">
+      <div class="card-body">
+        <h6 class="card-title text-info mb-3">Recuperación de inversión en insumos</h6>
+        @if (inversionInsumosEsteMes() > 0) {
+          <div class="recovery-axes-row mb-2">
+            <div class="recovery-axis-item">
+              <label class="text-white-50 small">Eje Y:</label>
+              <select class="form-select form-select-sm recovery-axis-select" [(ngModel)]="recoveryChartScale" (ngModelChange)="renderChartDelayed()">
+                @for (opt of recoveryScaleOptions; track opt.value) {
+                  <option [value]="opt.value">{{ opt.label }}</option>
+                }
+              </select>
+            </div>
+            <div class="recovery-axis-item">
+              <label class="text-white-50 small">Eje X:</label>
+              <select class="form-select form-select-sm recovery-axis-select" [(ngModel)]="recoveryChartAxisX" (ngModelChange)="renderChartDelayed()">
+                @for (opt of recoveryAxisXOptions; track opt.value) {
+                  <option [value]="opt.value">{{ opt.label }}</option>
+                }
+              </select>
+            </div>
+          </div>
+          <div class="recovery-chart-container">
+            <canvas #recoveryChartCanvas></canvas>
+          </div>
+        }
+        <p class="text-white-50 small mb-2">
+          Inversión en insumos este mes: <strong class="text-white">${{ inversionInsumosEsteMes() | number }}</strong> &nbsp;|&nbsp;
+          Ventas este mes: <strong class="text-white">${{ ventasEsteMes() | number }}</strong>
+        </p>
+        @switch (tipoMensajeRecuperacion()) {
+          @case ('ok') {
+            @if (fechaEstimadaRecuperacion()) {
+              <p class="mb-2 text-info">
+                <strong>Según la proyección, llegarías a recuperar la inversión en insumos aproximadamente el {{ fechaEstimadaRecuperacion() }}</strong>
+                <span class="text-white-50">(en {{ diasParaRecuperarMensual() }} días)</span>
+              </p>
+            }
+          }
+          @case ('sin-ventas') {
+            <p class="text-warning mb-2">
+              No hay ventas este mes. Con ventas registradas, acá se mostraría en cuántos días se recuperaría la inversión de insumos.
+            </p>
+          }
+          @case ('sin-inversion') {
+            <p class="text-white-50 mb-2">
+              No hay compras de insumos este mes. Registrá compras para ver la estimación de recuperación.
+            </p>
+          }
+          @default {
+            <p class="text-white-50 mb-2">Sin datos suficientes para calcular.</p>
+          }
+        }
+        <small class="text-white-50 d-block mt-2">Basado en ventas brutas, sin márgenes.</small>
+      </div>
+    </div>
   }
 </div>
 

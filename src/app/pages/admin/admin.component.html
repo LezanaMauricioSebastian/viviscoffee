@@ -10,6 +10,9 @@
 
   <ul class="nav nav-tabs mb-4">
     <li class="nav-item">
+      <a class="nav-link" [class.active]="tab === 'resumen'" (click)="setTab('resumen')" href="javascript:void(0)">Resumen</a>
+    </li>
+    <li class="nav-item">
       <a class="nav-link" [class.active]="tab === 'productos'" (click)="setTab('productos')" href="javascript:void(0)">Productos</a>
     </li>
     <li class="nav-item">
@@ -23,6 +26,72 @@
   <div class="mb-3">
     <a routerLink="/" class="btn btn-outline-light btn-sm">Volver al inicio</a>
   </div>
+
+  <!-- Tab Resumen -->
+  @if (tab === 'resumen') {
+    @if (loadingCompras || loadingVentas) {
+      <p class="resumen-texto-gris">Cargando resumen...</p>
+    } @else {
+      <!-- Card 1: Flujo de caja bruto -->
+      <div class="card resumen-card mb-3">
+        <div class="card-body">
+          <h6 class="card-title text-info mb-2">Flujo de caja este mes</h6>
+          <p class="mb-0">
+            Vendiste <strong>${{ ventasEsteMes() | number }}</strong>, gastaste <strong>${{ inversionInsumosEsteMes() | number }}</strong> en insumos.
+            <span [class.flujo-positivo]="flujoCajaEsteMes() >= 0" [class.flujo-negativo]="flujoCajaEsteMes() < 0">
+              Quedan <strong>${{ flujoCajaEsteMes() | number }}</strong>
+            </span>
+          </p>
+        </div>
+      </div>
+
+      <!-- Card 2: Comparación mes actual vs anterior -->
+      <div class="card resumen-card mb-3">
+        <div class="card-body">
+          <h6 class="card-title text-info mb-2">Comparación con mes anterior</h6>
+          <p class="mb-1">
+            Ventas este mes: <strong>${{ ventasEsteMes() | number }}</strong>
+            @if (variacionPorcentualVentas() !== null) {
+              <span class="d-block d-md-inline" [class.text-success]="variacionPorcentualVentas()! >= 0" [class.text-danger]="variacionPorcentualVentas()! < 0">
+                ({{ variacionPorcentualVentas()! >= 0 ? '+' : '' }}{{ variacionPorcentualVentas()! | number:'1.0-1' }}% vs mes anterior)
+              </span>
+            } @else {
+              <span class="resumen-texto-gris d-block d-md-inline">Sin datos del mes anterior</span>
+            }
+          </p>
+          <p class="mb-0">
+            Compras este mes: <strong>${{ inversionInsumosEsteMes() | number }}</strong>
+            @if (variacionPorcentualCompras() !== null) {
+              <span class="d-block d-md-inline" [class.text-success]="variacionPorcentualCompras()! <= 0" [class.text-danger]="variacionPorcentualCompras()! > 0">
+                ({{ variacionPorcentualCompras()! >= 0 ? '+' : '' }}{{ variacionPorcentualCompras()! | number:'1.0-1' }}% vs mes anterior)
+              </span>
+            } @else {
+              <span class="resumen-texto-gris d-block d-md-inline">Sin datos del mes anterior</span>
+            }
+          </p>
+        </div>
+      </div>
+
+      <!-- Card 3: Tendencia de ventas -->
+      <div class="card resumen-card mb-3">
+        <div class="card-body">
+          <h6 class="card-title text-info mb-2">Tendencia de ventas</h6>
+          <select class="form-select form-select-sm mb-3" style="max-width: 180px" [(ngModel)]="periodoTendencia" (ngModelChange)="renderTendenciaDelayed()">
+            @for (opt of periodoTendenciaOptions; track opt.value) {
+              <option [value]="opt.value">{{ opt.label }}</option>
+            }
+          </select>
+          @if (hayDatosTendencia()) {
+            <div class="tendencia-chart-container">
+              <canvas #tendenciaChartCanvas></canvas>
+            </div>
+          } @else {
+            <p class="resumen-texto-gris mb-0">No hay datos de ventas en este período.</p>
+          }
+        </div>
+      </div>
+    }
+  }
 
   <!-- Tab Productos -->
   @if (tab === 'productos') {

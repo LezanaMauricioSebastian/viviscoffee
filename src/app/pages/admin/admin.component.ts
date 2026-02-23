@@ -34,7 +34,7 @@ Chart.register(
   Legend
 );
 
-type Tab = 'productos' | 'compras' | 'ventas';
+type Tab = 'resumen' | 'productos' | 'compras' | 'ventas';
 type Periodo = 'mensual' | 'semestral' | 'total';
 
 @Component({
@@ -45,13 +45,21 @@ type Periodo = 'mensual' | 'semestral' | 'total';
   styleUrl: './admin.component.css',
 })
 export class AdminComponent implements OnInit, OnDestroy {
-  tab: Tab = 'productos';
+  tab: Tab = 'resumen';
   periodo: Periodo = 'total';
+  periodoTendencia: '7d' | '30d' | '6m' = '30d';
+  readonly periodoTendenciaOptions: { value: '7d' | '30d' | '6m'; label: string }[] = [
+    { value: '7d', label: 'Últimos 7 días' },
+    { value: '30d', label: 'Últimos 30 días' },
+    { value: '6m', label: 'Últimos 6 meses' },
+  ];
 
   @ViewChild('chartCanvas') chartCanvas?: ElementRef<HTMLCanvasElement>;
   @ViewChild('recoveryChartCanvas') recoveryChartCanvas?: ElementRef<HTMLCanvasElement>;
+  @ViewChild('tendenciaChartCanvas') tendenciaChartCanvas?: ElementRef<HTMLCanvasElement>;
   private chart: Chart<'bar'> | null = null;
   private recoveryChart: Chart<'line'> | null = null;
+  private tendenciaChart: Chart<'line'> | null = null;
   private chartRenderTimeout: ReturnType<typeof setTimeout> | null = null;
 
   // Productos
@@ -131,6 +139,11 @@ export class AdminComponent implements OnInit, OnDestroy {
     this.tab = t;
     this.error = '';
     this.success = '';
+    if (t === 'resumen') {
+      this.cargarCompras();
+      this.cargarVentas();
+      this.renderTendenciaDelayed();
+    }
     if (t === 'compras') {
       this.cargarCompras();
       this.cargarVentas();
@@ -161,6 +174,18 @@ export class AdminComponent implements OnInit, OnDestroy {
     return {
       inicio: inicio.toISOString().slice(0, 10),
       fin: fin.toISOString().slice(0, 10),
+    };
+  }
+
+  getRangoMesAnterior(): { inicio: string; fin: string } {
+    const now = new Date();
+    const prev = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const y = prev.getFullYear();
+    const m = String(prev.getMonth() + 1).padStart(2, '0');
+    const ultimoDia = new Date(y, prev.getMonth() + 1, 0).getDate();
+    return {
+      inicio: `${y}-${m}-01`,
+      fin: `${y}-${m}-${String(ultimoDia).padStart(2, '0')}`,
     };
   }
 
@@ -202,6 +227,7 @@ export class AdminComponent implements OnInit, OnDestroy {
       this.compras = data;
       this.loadingCompras = false;
       this.renderChartDelayed();
+      if (this.tab === 'resumen' && !this.loadingVentas) this.renderTendenciaDelayed();
     });
   }
 
@@ -211,6 +237,7 @@ export class AdminComponent implements OnInit, OnDestroy {
       this.ventas = data;
       this.loadingVentas = false;
       this.renderChartDelayed();
+      if (this.tab === 'resumen' && !this.loadingCompras) this.renderTendenciaDelayed();
     });
   }
 
@@ -452,6 +479,7 @@ export class AdminComponent implements OnInit, OnDestroy {
     if (this.chartRenderTimeout) clearTimeout(this.chartRenderTimeout);
     this.destroyChart();
     this.destroyRecoveryChart();
+    this.destroyTendenciaChart();
   }
 
   importar(): void {
@@ -732,6 +760,201 @@ export class AdminComponent implements OnInit, OnDestroy {
         return f && f >= inicio && f <= fin;
       })
       .reduce((sum, v) => sum + (Number(v.monto) || 0), 0);
+  }
+
+  ventasMesAnterior(): number {
+    const { inicio, fin } = this.getRangoMesAnterior();
+    return this.ventas
+      .filter((v) => {
+        const f = this.normalizarFecha(v.fecha);
+        return f && f >= inicio && f <= fin;
+      })
+      .reduce((sum, v) => sum + (Number(v.monto) || 0), 0);
+  }
+
+  comprasMesAnterior(): number {
+    const { inicio, fin } = this.getRangoMesAnterior();
+    return this.compras
+      .filter((c) => {
+        const f = this.normalizarFecha(c.fecha);
+        return f && f >= inicio && f <= fin;
+      })
+      .reduce((sum, c) => sum + (Number(c.monto) || 0), 0);
+  }
+
+  flujoCajaEsteMes(): number {
+    return this.ventasEsteMes() - this.inversionInsumosEsteMes();
+  }
+
+  variacionPorcentualVentas(): number | null {
+    const actual = this.ventasEsteMes();
+    const anterior = this.ventasMesAnterior();
+    if (anterior <= 0) return null;
+    return ((actual - anterior) / anterior) * 100;
+  }
+
+  variacionPorcentualCompras(): number | null {
+    const actual = this.inversionInsumosEsteMes();
+    const anterior = this.comprasMesAnterior();
+    if (anterior <= 0) return null;
+    return ((actual - anterior) / anterior) * 100;
+  }
+
+  hayDatosTendencia(): boolean {
+    return this.datosTendenciaVentas().data.some((d) => d > 0);
+  }
+
+  datosTendenciaVentas(): { labels: string[]; data: number[] } {
+    const hoy = new Date();
+    let inicio: string;
+    let fin = hoy.toISOString().slice(0, 10);
+    const labels: string[] = [];
+    const data: number[] = [];
+
+    if (this.periodoTendencia === '7d') {
+      const d = new Date(hoy);
+      d.setDate(d.getDate() - 6);
+      inicio = d.toISOString().slice(0, 10);
+      const ventasPorDia: Record<string, number> = {};
+      for (let i = 0; i < 7; i++) {
+        const dd = new Date(d);
+        dd.setDate(dd.getDate() + i);
+        const key = dd.toISOString().slice(0, 10);
+        ventasPorDia[key] = 0;
+      }
+      this.ventas
+        .filter((v) => {
+          const f = this.normalizarFecha(v.fecha);
+          return f && f >= inicio && f <= fin;
+        })
+        .forEach((v) => {
+          const f = this.normalizarFecha(v.fecha);
+          if (f) ventasPorDia[f] = (ventasPorDia[f] ?? 0) + (Number(v.monto) || 0);
+        });
+      const keys = Object.keys(ventasPorDia).sort();
+      keys.forEach((k) => {
+        labels.push(k.slice(8, 10) + '/' + k.slice(5, 7));
+        data.push(ventasPorDia[k] ?? 0);
+      });
+    } else if (this.periodoTendencia === '30d') {
+      const d = new Date(hoy);
+      d.setDate(d.getDate() - 29);
+      inicio = d.toISOString().slice(0, 10);
+      const ventasPorDia: Record<string, number> = {};
+      for (let i = 0; i < 30; i++) {
+        const dd = new Date(d);
+        dd.setDate(dd.getDate() + i);
+        const key = dd.toISOString().slice(0, 10);
+        ventasPorDia[key] = 0;
+      }
+      this.ventas
+        .filter((v) => {
+          const f = this.normalizarFecha(v.fecha);
+          return f && f >= inicio && f <= fin;
+        })
+        .forEach((v) => {
+          const f = this.normalizarFecha(v.fecha);
+          if (f) ventasPorDia[f] = (ventasPorDia[f] ?? 0) + (Number(v.monto) || 0);
+        });
+      const keys = Object.keys(ventasPorDia).sort();
+      keys.forEach((k) => {
+        labels.push(k.slice(8, 10) + '/' + k.slice(5, 7));
+        data.push(ventasPorDia[k] ?? 0);
+      });
+    } else {
+      const { inicio: ini, fin: f } = this.getRangoSemestral();
+      inicio = ini;
+      fin = f;
+      const ventasPorMes: Record<string, number> = {};
+      const finDate = new Date(fin);
+      for (let i = 5; i >= 0; i--) {
+        const m = new Date(finDate.getFullYear(), finDate.getMonth() - i, 1);
+        const key = `${m.getFullYear()}-${String(m.getMonth() + 1).padStart(2, '0')}`;
+        ventasPorMes[key] = 0;
+      }
+      this.ventas
+        .filter((v) => {
+          const f2 = this.normalizarFecha(v.fecha);
+          return f2 && f2 >= inicio && f2 <= fin;
+        })
+        .forEach((v) => {
+          const f2 = this.normalizarFecha(v.fecha);
+          if (f2) {
+            const key = f2.slice(0, 7);
+            ventasPorMes[key] = (ventasPorMes[key] ?? 0) + (Number(v.monto) || 0);
+          }
+        });
+      const meses = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+      const keys = Object.keys(ventasPorMes).sort();
+      keys.forEach((k) => {
+        const parts = k.split('-');
+        const mNum = parseInt(parts[1], 10);
+        labels.push(meses[mNum - 1] + ' ' + parts[0].slice(2));
+        data.push(ventasPorMes[k] ?? 0);
+      });
+    }
+    return { labels, data };
+  }
+
+  renderTendenciaDelayed(): void {
+    setTimeout(() => this.renderTendenciaChart(), 150);
+  }
+
+  renderTendenciaChart(): void {
+    if (this.tab !== 'resumen') return;
+    const canvas = this.tendenciaChartCanvas?.nativeElement;
+    if (!canvas) return;
+
+    const { labels, data } = this.datosTendenciaVentas();
+    this.destroyTendenciaChart();
+
+    this.tendenciaChart = new Chart(canvas, {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [
+          {
+            label: 'Ventas ($)',
+            data,
+            borderColor: 'rgb(40, 167, 69)',
+            backgroundColor: 'rgba(40, 167, 69, 0.2)',
+            borderWidth: 2,
+            fill: true,
+            tension: 0.3,
+          },
+        ],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          title: {
+            display: true,
+            text: 'Tendencia de ventas',
+            color: '#fff',
+          },
+        },
+        scales: {
+          y: {
+            beginAtZero: true,
+            ticks: { color: '#adb5bd', callback: (v) => '$' + Number(v).toLocaleString() },
+            grid: { color: 'rgba(255,255,255,0.1)' },
+          },
+          x: {
+            ticks: { color: '#adb5bd', maxRotation: 45 },
+            grid: { color: 'rgba(255,255,255,0.1)' },
+          },
+        },
+      },
+    });
+  }
+
+  destroyTendenciaChart(): void {
+    if (this.tendenciaChart) {
+      this.tendenciaChart.destroy();
+      this.tendenciaChart = null;
+    }
   }
 
   diasParaRecuperarSemanal(): number | null {

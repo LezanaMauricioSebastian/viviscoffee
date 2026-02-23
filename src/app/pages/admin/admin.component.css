@@ -2,6 +2,36 @@
   backdrop-filter: blur(2px);
 }
 
+/* Resumen tab */
+.resumen-card {
+  background-color: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 0.375rem;
+}
+.resumen-card .card-body {
+  padding: 1rem 1.25rem;
+  color: #adb5bd;
+}
+.resumen-card .form-select {
+  color: #adb5bd;
+  background-color: rgba(33, 37, 41, 0.9);
+}
+.resumen-texto-gris {
+  color: #adb5bd;
+}
+.flujo-positivo {
+  color: #28a745;
+}
+.flujo-negativo {
+  color: #dc3545;
+}
+.tendencia-chart-container {
+  position: relative;
+  height: 300px;
+  min-height: 300px;
+  width: 100%;
+}
+
 /* Controles Eje Y / Eje X: en celular label arriba del select; en desktop inline */
 .recovery-axes-row {
   display: flex;

@@ -17,7 +17,18 @@ export const authGuard: CanActivateFn = () => {
 
   return from(supabase.client.auth.getSession()).pipe(
     timeout(5000),
-    map(({ data: { session } }) => (session ? true : router.createUrlTree(['/login']))),
-    catchError(() => of(router.createUrlTree(['/login'])))
+    map(({ data: { session } }) => {
+      if (session) return true;
+      return router.createUrlTree(['/login'], {
+        queryParams: { returnUrl: router.url },
+      });
+    }),
+    catchError(() =>
+      of(
+        router.createUrlTree(['/login'], {
+          queryParams: { returnUrl: router.url },
+        })
+      )
+    )
   );
 };

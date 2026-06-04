@@ -2,6 +2,8 @@ import { Component, OnInit, OnDestroy, ViewChild, ElementRef } from '@angular/co
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
+import { forkJoin } from 'rxjs';
+import * as Papa from 'papaparse';
 import { ProductosService, Producto } from '../../core/services/productos.service';
 import { ComprasService, CompraInsumo } from '../../core/services/compras.service';
 import { VentasService, Venta } from '../../core/services/ventas.service';
@@ -88,6 +90,11 @@ export class AdminComponent implements OnInit, OnDestroy {
   editingId: string | null = null;
   form: Partial<Producto> = { nombre: '', precio: '', descripcion: '', img: '', categoria: 'cafe' };
   subiendoImg = false;
+  filtroProductoBusqueda = '';
+  filtroProductoCategoria = '';
+  reordenandoProductoId: string | null = null;
+  filtroCompraBusqueda = '';
+  filtroVentaBusqueda = '';
   dashboardConfig: AdminConfig = { ...DEFAULT_ADMIN_CONFIG };
   dashboardConfigForm: Omit<AdminConfig, 'id'> = {
     meta_ventas_mensual: 0,
@@ -233,6 +240,139 @@ export class AdminComponent implements OnInit, OnDestroy {
 
   get ventasFiltradas(): Venta[] {
     return this.filtrarPorPeriodo(this.ventas);
+  }
+
+  get productosVisibles(): Producto[] {
+    const q = this.normalizarBusqueda(this.filtroProductoBusqueda);
+    return this.productos
+      .filter((p) => {
+        if (this.filtroProductoCategoria && p.categoria !== this.filtroProductoCategoria) {
+          return false;
+        }
+        if (!q) return true;
+        const texto = [p.nombre, p.precio, p.descripcion, p.categoria].join(' ').toLowerCase();
+        return texto.includes(q);
+      })
+      .sort((a, b) => (a.orden ?? 0) - (b.orden ?? 0));
+  }
+
+  get comprasVisibles(): CompraInsumo[] {
+    const q = this.normalizarBusqueda(this.filtroCompraBusqueda);
+    return this.comprasFiltradas.filter((c) => {
+      if (!q) return true;
+      const texto = [c.concepto, c.proveedor, c.notas, c.cantidad, c.unidad]
+        .join(' ')
+        .toLowerCase();
+      return texto.includes(q);
+    });
+  }
+
+  get ventasVisibles(): Venta[] {
+    const q = this.normalizarBusqueda(this.filtroVentaBusqueda);
+    return this.ventasFiltradas.filter((v) => {
+      if (!q) return true;
+      const texto = [v.detalle, v.notas, String(v.monto)].join(' ').toLowerCase();
+      return texto.includes(q);
+    });
+  }
+
+  normalizarBusqueda(texto: string): string {
+    return texto.trim().toLowerCase();
+  }
+
+  productosEnCategoria(categoria: string): Producto[] {
+    return this.productos
+      .filter((p) => p.categoria === categoria)
+      .sort((a, b) => (a.orden ?? 0) - (b.orden ?? 0));
+  }
+
+  puedeMoverProducto(p: Producto, dir: -1 | 1): boolean {
+    const list = this.productosEnCategoria(p.categoria);
+    const idx = list.findIndex((x) => x.id === p.id);
+    const swapIdx = idx + dir;
+    return idx >= 0 && swapIdx >= 0 && swapIdx < list.length;
+  }
+
+  moverProducto(p: Producto, dir: -1 | 1): void {
+    if (!p.id || this.reordenandoProductoId) return;
+    const list = this.productosEnCategoria(p.categoria);
+    const idx = list.findIndex((x) => x.id === p.id);
+    const swapIdx = idx + dir;
+    if (swapIdx < 0 || swapIdx >= list.length) return;
+    const other = list[swapIdx];
+    if (!other.id) return;
+
+    const ordenP = p.orden ?? idx;
+    const ordenO = other.orden ?? swapIdx;
+    this.reordenandoProductoId = p.id;
+    this.error = '';
+    this.success = '';
+
+    forkJoin([
+      this.prod.actualizar(p.id, { orden: ordenO }),
+      this.prod.actualizar(other.id, { orden: ordenP }),
+    ]).subscribe({
+      next: ([r1, r2]) => {
+        this.reordenandoProductoId = null;
+        if (r1.error || r2.error) {
+          this.error = r1.error ?? r2.error ?? 'Error al reordenar';
+          return;
+        }
+        this.success = 'Orden del catálogo actualizado.';
+        this.cargar();
+      },
+      error: () => {
+        this.reordenandoProductoId = null;
+        this.error = 'Error al reordenar';
+      },
+    });
+  }
+
+  exportarComprasCsv(): void {
+    const rows = this.comprasVisibles.map((c) => ({
+      fecha: this.normalizarFecha(c.fecha),
+      concepto: c.concepto,
+      cantidad: c.cantidad ?? '',
+      unidad: c.unidad ?? '',
+      monto: Number(c.monto) || 0,
+      proveedor: c.proveedor ?? '',
+      notas: c.notas ?? '',
+    }));
+    if (rows.length === 0) {
+      this.error = 'No hay compras para exportar con los filtros actuales.';
+      return;
+    }
+    this.descargarCsv(Papa.unparse(rows), `compras-${this.periodo}-${this.fechaExportacion()}.csv`);
+    this.success = `Se exportaron ${rows.length} compras.`;
+  }
+
+  exportarVentasCsv(): void {
+    const rows = this.ventasVisibles.map((v) => ({
+      fecha: this.normalizarFecha(v.fecha),
+      monto: Number(v.monto) || 0,
+      detalle: v.detalle ?? '',
+      notas: v.notas ?? '',
+    }));
+    if (rows.length === 0) {
+      this.error = 'No hay ventas para exportar con los filtros actuales.';
+      return;
+    }
+    this.descargarCsv(Papa.unparse(rows), `ventas-${this.periodo}-${this.fechaExportacion()}.csv`);
+    this.success = `Se exportaron ${rows.length} ventas.`;
+  }
+
+  private fechaExportacion(): string {
+    return new Date().toISOString().slice(0, 10);
+  }
+
+  private descargarCsv(contenido: string, nombre: string): void {
+    const blob = new Blob(['\ufeff' + contenido], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = nombre;
+    link.click();
+    URL.revokeObjectURL(url);
   }
 
   cargarConfig(): void {
@@ -602,12 +742,13 @@ export class AdminComponent implements OnInit, OnDestroy {
       this.error = 'El nombre es obligatorio';
       return;
     }
+    const categoria = this.form.categoria ?? 'cafe';
     const data = {
       nombre: this.form.nombre.trim(),
       precio: this.form.precio ?? '',
       descripcion: this.form.descripcion ?? '',
       img: this.form.img ?? '',
-      categoria: this.form.categoria ?? 'cafe',
+      categoria,
     };
     if (this.editingId) {
       this.prod.actualizar(this.editingId, data).subscribe((res) => {
@@ -619,7 +760,11 @@ export class AdminComponent implements OnInit, OnDestroy {
         }
       });
     } else {
-      this.prod.crear(data).subscribe((res) => {
+      const maxOrden = this.productosEnCategoria(categoria).reduce(
+        (max, p) => Math.max(max, p.orden ?? 0),
+        -1
+      );
+      this.prod.crear({ ...data, orden: maxOrden + 1 }).subscribe((res) => {
         if ('error' in res) this.error = res.error;
         else {
           this.success = 'Producto creado.';
@@ -805,8 +950,16 @@ export class AdminComponent implements OnInit, OnDestroy {
     return this.comprasFiltradas.reduce((sum, c) => sum + (Number(c.monto) || 0), 0);
   }
 
+  totalComprasVisibles(): number {
+    return this.comprasVisibles.reduce((sum, c) => sum + (Number(c.monto) || 0), 0);
+  }
+
   totalVentas(): number {
     return this.ventasFiltradas.reduce((sum, v) => sum + (Number(v.monto) || 0), 0);
+  }
+
+  totalVentasVisibles(): number {
+    return this.ventasVisibles.reduce((sum, v) => sum + (Number(v.monto) || 0), 0);
   }
 
   gastosFijosMensuales(): number {

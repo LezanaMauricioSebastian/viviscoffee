@@ -202,11 +202,46 @@
   <!-- Tab Productos -->
   @if (tab === 'productos') {
     <div class="mb-4 d-flex flex-wrap gap-2">
-      <button class="btn btn-primary" (click)="abrirNuevo()">Nuevo producto</button>
-      <button class="btn btn-outline-secondary" (click)="importar()" [disabled]="importando">
+      <button type="button" class="btn btn-primary" (click)="abrirNuevo()">Nuevo producto</button>
+      <button type="button" class="btn btn-outline-secondary" (click)="importar()" [disabled]="importando">
         {{ importando ? 'Importando...' : 'Importar desde Google Sheets' }}
       </button>
     </div>
+
+    @if (!loading && productos.length > 0) {
+      <div class="admin-toolbar mb-3">
+        <input
+          type="search"
+          class="form-control form-control-sm admin-search"
+          placeholder="Buscar por nombre, precio o descripción..."
+          [value]="filtroProductoBusqueda"
+          (input)="filtroProductoBusqueda = $any($event.target).value"
+        >
+        <select
+          class="form-select form-select-sm admin-filter-select"
+          [value]="filtroProductoCategoria"
+          (change)="filtroProductoCategoria = $any($event.target).value"
+        >
+          <option value="">Todas las categorías</option>
+          @for (c of categorias; track c) {
+            <option [value]="c">{{ c }}</option>
+          }
+        </select>
+        @if (filtroProductoBusqueda || filtroProductoCategoria) {
+          <button
+            type="button"
+            class="btn btn-outline-light btn-sm"
+            (click)="filtroProductoBusqueda = ''; filtroProductoCategoria = ''"
+          >
+            Limpiar filtros
+          </button>
+        }
+      </div>
+      <p class="text-white-50 small mb-2">
+        Mostrando {{ productosVisibles.length }} de {{ productos.length }} productos.
+        Las flechas cambian el orden en la web pública.
+      </p>
+    }
 
     @if (loading) {
       <p class="text-white-50">Cargando productos...</p>
@@ -214,11 +249,14 @@
       <p class="text-white-50">
         No hay productos. Clic en "Importar desde Google Sheets" o "Nuevo producto".
       </p>
+    } @else if (productosVisibles.length === 0) {
+      <p class="text-warning">Ningún producto coincide con los filtros.</p>
     } @else {
       <div class="table-responsive">
         <table class="table table-dark table-striped">
           <thead>
             <tr>
+              <th>Orden</th>
               <th>Nombre</th>
               <th>Precio</th>
               <th>Categoría</th>
@@ -226,14 +264,36 @@
             </tr>
           </thead>
           <tbody>
-            @for (p of productos; track p.id) {
+            @for (p of productosVisibles; track p.id) {
               <tr>
+                <td class="orden-cell">
+                  <div class="btn-group btn-group-sm">
+                    <button
+                      type="button"
+                      class="btn btn-outline-light"
+                      title="Subir"
+                      [disabled]="!puedeMoverProducto(p, -1) || reordenandoProductoId === p.id"
+                      (click)="moverProducto(p, -1)"
+                    >
+                      ↑
+                    </button>
+                    <button
+                      type="button"
+                      class="btn btn-outline-light"
+                      title="Bajar"
+                      [disabled]="!puedeMoverProducto(p, 1) || reordenandoProductoId === p.id"
+                      (click)="moverProducto(p, 1)"
+                    >
+                      ↓
+                    </button>
+                  </div>
+                </td>
                 <td>{{ p.nombre }}</td>
                 <td>${{ p.precio }}</td>
                 <td>{{ p.categoria }}</td>
                 <td>
-                  <button class="btn btn-sm btn-outline-light me-1" (click)="abrirEditar(p)">Editar</button>
-                  <button class="btn btn-sm btn-outline-danger" (click)="eliminar(p)">Eliminar</button>
+                  <button type="button" class="btn btn-sm btn-outline-light me-1" (click)="abrirEditar(p)">Editar</button>
+                  <button type="button" class="btn btn-sm btn-outline-danger" (click)="eliminar(p)">Eliminar</button>
                 </td>
               </tr>
             }
@@ -246,13 +306,33 @@
   <!-- Tab Compras -->
   @if (tab === 'compras') {
     <div class="mb-4 d-flex flex-wrap align-items-center gap-2">
-      <button class="btn btn-primary" (click)="abrirNuevoCompra()">Nueva compra</button>
-      <select class="form-select form-select-sm" style="max-width: 140px" [(ngModel)]="periodo" (ngModelChange)="onPeriodoChange()">
+      <button type="button" class="btn btn-primary" (click)="abrirNuevoCompra()">Nueva compra</button>
+      <select class="form-select form-select-sm admin-filter-select" [(ngModel)]="periodo" (ngModelChange)="onPeriodoChange()">
         <option value="mensual">Mensual</option>
         <option value="semestral">Semestral</option>
         <option value="total">Total</option>
       </select>
+      <button type="button" class="btn btn-outline-secondary btn-sm" (click)="exportarComprasCsv()" [disabled]="comprasVisibles.length === 0">
+        Exportar CSV
+      </button>
     </div>
+
+    @if (!loadingCompras && comprasFiltradas.length > 0) {
+      <div class="admin-toolbar mb-3">
+        <input
+          type="search"
+          class="form-control form-control-sm admin-search"
+          placeholder="Buscar concepto, proveedor o notas..."
+          [value]="filtroCompraBusqueda"
+          (input)="filtroCompraBusqueda = $any($event.target).value"
+        >
+        @if (filtroCompraBusqueda) {
+          <button type="button" class="btn btn-outline-light btn-sm" (click)="filtroCompraBusqueda = ''">
+            Limpiar búsqueda
+          </button>
+        }
+      </div>
+    }
 
     @if (loadingCompras) {
       <p class="text-white-50">Cargando compras...</p>
@@ -260,29 +340,38 @@
       <p class="text-white-50">No hay compras registradas.</p>
     } @else if (comprasFiltradas.length === 0) {
       <p class="text-warning mb-2">No hay compras en este período. Probá seleccionar "Total" para ver todo.</p>
+    } @else if (comprasVisibles.length === 0) {
+      <p class="text-warning mb-2">Ninguna compra coincide con la búsqueda.</p>
     } @else {
-      <p class="text-success mb-2"><strong>Total compras ({{ periodo }}): ${{ totalCompras() | number }}</strong></p>
+      <p class="text-success mb-2">
+        <strong>Total período ({{ periodo }}): ${{ totalCompras() | number }}</strong>
+        @if (filtroCompraBusqueda) {
+          <span class="text-white-50"> — visibles: ${{ totalComprasVisibles() | number }} ({{ comprasVisibles.length }} registros)</span>
+        }
+      </p>
       <div class="table-responsive">
         <table class="table table-dark table-striped">
           <thead>
             <tr>
               <th>Fecha</th>
               <th>Concepto</th>
+              <th>Proveedor</th>
               <th>Cantidad</th>
               <th>Monto</th>
               <th>Acciones</th>
             </tr>
           </thead>
           <tbody>
-            @for (c of comprasFiltradas; track c.id) {
+            @for (c of comprasVisibles; track c.id) {
               <tr>
                 <td>{{ normalizarFecha(c.fecha) || c.fecha }}</td>
                 <td>{{ c.concepto }}</td>
+                <td>{{ c.proveedor || '—' }}</td>
                 <td>{{ c.cantidad }} {{ c.unidad }}</td>
                 <td>${{ c.monto }}</td>
                 <td>
-                  <button class="btn btn-sm btn-outline-light me-1" (click)="abrirEditarCompra(c)">Editar</button>
-                  <button class="btn btn-sm btn-outline-danger" (click)="eliminarCompra(c)">Eliminar</button>
+                  <button type="button" class="btn btn-sm btn-outline-light me-1" (click)="abrirEditarCompra(c)">Editar</button>
+                  <button type="button" class="btn btn-sm btn-outline-danger" (click)="eliminarCompra(c)">Eliminar</button>
                 </td>
               </tr>
             }
@@ -295,13 +384,33 @@
   <!-- Tab Ventas -->
   @if (tab === 'ventas') {
     <div class="mb-4 d-flex flex-wrap align-items-center gap-2">
-      <button class="btn btn-primary" (click)="abrirNuevoVenta()">Nueva venta</button>
-      <select class="form-select form-select-sm" style="max-width: 140px" [(ngModel)]="periodo" (ngModelChange)="onPeriodoChange()">
+      <button type="button" class="btn btn-primary" (click)="abrirNuevoVenta()">Nueva venta</button>
+      <select class="form-select form-select-sm admin-filter-select" [(ngModel)]="periodo" (ngModelChange)="onPeriodoChange()">
         <option value="mensual">Mensual</option>
         <option value="semestral">Semestral</option>
         <option value="total">Total</option>
       </select>
+      <button type="button" class="btn btn-outline-secondary btn-sm" (click)="exportarVentasCsv()" [disabled]="ventasVisibles.length === 0">
+        Exportar CSV
+      </button>
     </div>
+
+    @if (!loadingVentas && ventasFiltradas.length > 0) {
+      <div class="admin-toolbar mb-3">
+        <input
+          type="search"
+          class="form-control form-control-sm admin-search"
+          placeholder="Buscar detalle, notas o monto..."
+          [value]="filtroVentaBusqueda"
+          (input)="filtroVentaBusqueda = $any($event.target).value"
+        >
+        @if (filtroVentaBusqueda) {
+          <button type="button" class="btn btn-outline-light btn-sm" (click)="filtroVentaBusqueda = ''">
+            Limpiar búsqueda
+          </button>
+        }
+      </div>
+    }
 
     @if (loadingVentas) {
       <p class="text-white-50">Cargando ventas...</p>
@@ -309,8 +418,15 @@
       <p class="text-white-50">No hay ventas registradas.</p>
     } @else if (ventasFiltradas.length === 0) {
       <p class="text-warning mb-2">No hay ventas en este período. Probá seleccionar "Total" para ver todo.</p>
+    } @else if (ventasVisibles.length === 0) {
+      <p class="text-warning mb-2">Ninguna venta coincide con la búsqueda.</p>
     } @else {
-      <p class="text-success mb-2"><strong>Total ventas ({{ periodo }}): ${{ totalVentas() | number }}</strong></p>
+      <p class="text-success mb-2">
+        <strong>Total período ({{ periodo }}): ${{ totalVentas() | number }}</strong>
+        @if (filtroVentaBusqueda) {
+          <span class="text-white-50"> — visibles: ${{ totalVentasVisibles() | number }} ({{ ventasVisibles.length }} registros)</span>
+        }
+      </p>
       <div class="table-responsive">
         <table class="table table-dark table-striped">
           <thead>
@@ -322,14 +438,14 @@
             </tr>
           </thead>
           <tbody>
-            @for (v of ventasFiltradas; track v.id) {
+            @for (v of ventasVisibles; track v.id) {
               <tr>
                 <td>{{ normalizarFecha(v.fecha) || v.fecha }}</td>
                 <td>${{ v.monto }}</td>
                 <td>{{ v.detalle }}</td>
                 <td>
-                  <button class="btn btn-sm btn-outline-light me-1" (click)="abrirEditarVenta(v)">Editar</button>
-                  <button class="btn btn-sm btn-outline-danger" (click)="eliminarVenta(v)">Eliminar</button>
+                  <button type="button" class="btn btn-sm btn-outline-light me-1" (click)="abrirEditarVenta(v)">Editar</button>
+                  <button type="button" class="btn btn-sm btn-outline-danger" (click)="eliminarVenta(v)">Eliminar</button>
                 </td>
               </tr>
             }

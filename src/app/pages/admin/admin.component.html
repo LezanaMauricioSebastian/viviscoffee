@@ -29,65 +29,171 @@
 
   <!-- Tab Resumen -->
   @if (tab === 'resumen') {
-    @if (loadingCompras || loadingVentas) {
+    @if (loadingCompras || loadingVentas || loadingConfig) {
       <p class="resumen-texto-gris">Cargando resumen...</p>
     } @else {
-      <!-- Card 1: Flujo de caja bruto -->
-      <div class="card resumen-card mb-3">
-        <div class="card-body">
-          <h6 class="card-title text-info mb-2">Flujo de caja este mes</h6>
-          <p class="mb-0">
-            Vendiste <strong>${{ ventasEsteMes() | number }}</strong>, gastaste <strong>${{ inversionInsumosEsteMes() | number }}</strong> en insumos.
-            <span [class.flujo-positivo]="flujoCajaEsteMes() >= 0" [class.flujo-negativo]="flujoCajaEsteMes() < 0">
-              Quedan <strong>${{ flujoCajaEsteMes() | number }}</strong>
-            </span>
-          </p>
-        </div>
-      </div>
-
-      <!-- Card 2: Comparación mes actual vs anterior -->
-      <div class="card resumen-card mb-3">
-        <div class="card-body">
-          <h6 class="card-title text-info mb-2">Comparación con mes anterior</h6>
-          <p class="mb-1">
-            Ventas este mes: <strong>${{ ventasEsteMes() | number }}</strong>
+      <div class="dashboard-grid mb-4">
+        <div class="card resumen-card dashboard-kpi">
+          <div class="card-body">
+            <span class="dashboard-label">Ventas del mes</span>
+            <strong class="dashboard-value">${{ ventasEsteMes() | number }}</strong>
             @if (variacionPorcentualVentas() !== null) {
-              <span class="d-block d-md-inline" [class.text-success]="variacionPorcentualVentas()! >= 0" [class.text-danger]="variacionPorcentualVentas()! < 0">
-                ({{ variacionPorcentualVentas()! >= 0 ? '+' : '' }}{{ variacionPorcentualVentas()! | number:'1.0-1' }}% vs mes anterior)
-              </span>
+              <small [class.text-success]="variacionPorcentualVentas()! >= 0" [class.text-danger]="variacionPorcentualVentas()! < 0">
+                {{ variacionPorcentualVentas()! >= 0 ? '+' : '' }}{{ variacionPorcentualVentas()! | number:'1.0-1' }}% vs mes anterior
+              </small>
             } @else {
-              <span class="resumen-texto-gris d-block d-md-inline">Sin datos del mes anterior</span>
+              <small class="resumen-texto-gris">Sin datos del mes anterior</small>
             }
-          </p>
-          <p class="mb-0">
-            Compras este mes: <strong>${{ inversionInsumosEsteMes() | number }}</strong>
+          </div>
+        </div>
+
+        <div class="card resumen-card dashboard-kpi">
+          <div class="card-body">
+            <span class="dashboard-label">Insumos del mes</span>
+            <strong class="dashboard-value">${{ inversionInsumosEsteMes() | number }}</strong>
             @if (variacionPorcentualCompras() !== null) {
-              <span class="d-block d-md-inline" [class.text-success]="variacionPorcentualCompras()! <= 0" [class.text-danger]="variacionPorcentualCompras()! > 0">
-                ({{ variacionPorcentualCompras()! >= 0 ? '+' : '' }}{{ variacionPorcentualCompras()! | number:'1.0-1' }}% vs mes anterior)
-              </span>
+              <small [class.text-success]="variacionPorcentualCompras()! <= 0" [class.text-danger]="variacionPorcentualCompras()! > 0">
+                {{ variacionPorcentualCompras()! >= 0 ? '+' : '' }}{{ variacionPorcentualCompras()! | number:'1.0-1' }}% vs mes anterior
+              </small>
             } @else {
-              <span class="resumen-texto-gris d-block d-md-inline">Sin datos del mes anterior</span>
+              <small class="resumen-texto-gris">Sin datos del mes anterior</small>
             }
-          </p>
+          </div>
+        </div>
+
+        <div class="card resumen-card dashboard-kpi">
+          <div class="card-body">
+            <span class="dashboard-label">Caja neta estimada</span>
+            <strong class="dashboard-value" [class.flujo-positivo]="flujoCajaNetoEsteMes() >= 0" [class.flujo-negativo]="flujoCajaNetoEsteMes() < 0">
+              ${{ flujoCajaNetoEsteMes() | number }}
+            </strong>
+            <small class="resumen-texto-gris">Ventas - insumos - gastos fijos</small>
+          </div>
+        </div>
+
+        <div class="card resumen-card dashboard-kpi">
+          <div class="card-body">
+            <span class="dashboard-label">Proyección fin de mes</span>
+            <strong class="dashboard-value">${{ proyeccionVentasFinMes() | number:'1.0-0' }}</strong>
+            <small class="resumen-texto-gris">Promedio diario: ${{ promedioVentaDiaria() | number:'1.0-0' }}</small>
+          </div>
         </div>
       </div>
 
-      <!-- Card 3: Tendencia de ventas -->
+      <div class="row g-3 mb-4">
+        <div class="col-lg-7">
+          <div class="card resumen-card h-100">
+            <div class="card-body">
+              <div class="d-flex justify-content-between align-items-start gap-3 mb-3">
+                <div>
+                  <h6 class="card-title text-info mb-1">Meta mensual</h6>
+                  <p class="resumen-texto-gris mb-0">Seguimiento de ventas contra objetivo.</p>
+                </div>
+                <strong class="text-white">${{ metaVentasMensual() | number }}</strong>
+              </div>
+              @if (metaVentasMensual() > 0) {
+                <div class="progress dashboard-progress mb-2">
+                  <div class="progress-bar" [style.width.%]="progresoMetaVentas()">{{ progresoMetaVentas() | number:'1.0-0' }}%</div>
+                </div>
+                <p class="mb-2">
+                  Faltan <strong>${{ montoFaltanteMeta() | number }}</strong> para llegar a la meta.
+                </p>
+                <p class="mb-0" [class.text-success]="proyeccionCumpleMeta()" [class.text-warning]="!proyeccionCumpleMeta()">
+                  La proyección {{ proyeccionCumpleMeta() ? 'alcanza' : 'no alcanza' }} la meta con el ritmo actual.
+                </p>
+              } @else {
+                <p class="resumen-texto-gris mb-0">Definí una meta mensual para ver avance y alertas de proyección.</p>
+              }
+            </div>
+          </div>
+        </div>
+
+        <div class="col-lg-5">
+          <div class="card resumen-card h-100">
+            <div class="card-body">
+              <h6 class="card-title text-info mb-3">Configuración rápida</h6>
+              <div class="row g-2">
+                <div class="col-sm-6 col-lg-12 col-xl-6">
+                  <label class="form-label small text-white-50">Meta ventas mensual ($)</label>
+                  <input type="number" class="form-control form-control-sm" min="0" [value]="dashboardConfigForm.meta_ventas_mensual" (input)="dashboardConfigForm.meta_ventas_mensual = $any($event.target).valueAsNumber || 0">
+                </div>
+                <div class="col-sm-6 col-lg-12 col-xl-6">
+                  <label class="form-label small text-white-50">Gastos fijos mensuales ($)</label>
+                  <input type="number" class="form-control form-control-sm" min="0" [value]="dashboardConfigForm.gastos_fijos_mensuales" (input)="dashboardConfigForm.gastos_fijos_mensuales = $any($event.target).valueAsNumber || 0">
+                </div>
+              </div>
+              <button type="button" class="btn btn-primary btn-sm mt-3" (click)="guardarConfig()" [disabled]="savingConfig">
+                {{ savingConfig ? 'Guardando...' : 'Guardar configuración' }}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="row g-3 mb-4">
+        <div class="col-lg-8">
+          <div class="card resumen-card h-100">
+            <div class="card-body">
+              <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+                <h6 class="card-title text-info mb-0">Tendencia de ventas</h6>
+                <select class="form-select form-select-sm dashboard-select" [value]="periodoTendencia" (change)="setPeriodoTendencia($any($event.target).value)">
+                  @for (opt of periodoTendenciaOptions; track opt.value) {
+                    <option [value]="opt.value">{{ opt.label }}</option>
+                  }
+                </select>
+              </div>
+              @if (hayDatosTendencia()) {
+                <div class="tendencia-chart-container">
+                  <canvas #tendenciaChartCanvas></canvas>
+                </div>
+              } @else {
+                <p class="resumen-texto-gris mb-0">No hay datos de ventas en este período.</p>
+              }
+            </div>
+          </div>
+        </div>
+
+        <div class="col-lg-4">
+          <div class="card resumen-card h-100">
+            <div class="card-body">
+              <h6 class="card-title text-info mb-3">Actividad reciente</h6>
+              @if (actividadReciente().length > 0) {
+                <div class="activity-list">
+                  @for (item of actividadReciente(); track item.id) {
+                    <div class="activity-item">
+                      <div>
+                        <span class="badge" [class.text-bg-success]="item.tipo === 'venta'" [class.text-bg-danger]="item.tipo === 'compra'">
+                          {{ item.tipo === 'venta' ? 'Venta' : 'Compra' }}
+                        </span>
+                        <strong class="d-block mt-1">{{ item.titulo }}</strong>
+                        <small class="resumen-texto-gris">{{ formatearFechaCorta(item.fecha) }} - {{ item.detalle }}</small>
+                      </div>
+                      <strong [class.text-success]="item.tipo === 'venta'" [class.text-danger]="item.tipo === 'compra'">
+                        ${{ item.monto | number }}
+                      </strong>
+                    </div>
+                  }
+                </div>
+              } @else {
+                <p class="resumen-texto-gris mb-0">Todavía no hay ventas ni compras registradas.</p>
+              }
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div class="card resumen-card mb-3">
         <div class="card-body">
-          <h6 class="card-title text-info mb-2">Tendencia de ventas</h6>
-          <select class="form-select form-select-sm mb-3" style="max-width: 180px" [(ngModel)]="periodoTendencia" (ngModelChange)="renderTendenciaDelayed()">
-            @for (opt of periodoTendenciaOptions; track opt.value) {
-              <option [value]="opt.value">{{ opt.label }}</option>
+          <h6 class="card-title text-info mb-2">Lecturas rápidas</h6>
+          <div class="dashboard-insights">
+            <p class="mb-0">Flujo bruto: <strong>${{ flujoCajaEsteMes() | number }}</strong></p>
+            <p class="mb-0">Gastos fijos: <strong>${{ gastosFijosMensuales() | number }}</strong></p>
+            @if (mejorDiaVentas(); as mejorDia) {
+              <p class="mb-0">Mejor día del mes: <strong>{{ formatearFechaCorta(mejorDia.fecha) }} (${{ mejorDia.total | number }})</strong></p>
+            } @else {
+              <p class="mb-0 resumen-texto-gris">Aún no hay ventas este mes para detectar el mejor día.</p>
             }
-          </select>
-          @if (hayDatosTendencia()) {
-            <div class="tendencia-chart-container">
-              <canvas #tendenciaChartCanvas></canvas>
-            </div>
-          } @else {
-            <p class="resumen-texto-gris mb-0">No hay datos de ventas en este período.</p>
-          }
+          </div>
         </div>
       </div>
     }

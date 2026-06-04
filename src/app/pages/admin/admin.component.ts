@@ -6,6 +6,11 @@ import { ProductosService, Producto } from '../../core/services/productos.servic
 import { ComprasService, CompraInsumo } from '../../core/services/compras.service';
 import { VentasService, Venta } from '../../core/services/ventas.service';
 import {
+  AdminConfigService,
+  AdminConfig,
+  DEFAULT_ADMIN_CONFIG,
+} from '../../core/services/admin-config.service';
+import {
   Chart,
   CategoryScale,
   LinearScale,
@@ -36,6 +41,14 @@ Chart.register(
 
 type Tab = 'resumen' | 'productos' | 'compras' | 'ventas';
 type Periodo = 'mensual' | 'semestral' | 'total';
+type DashboardActivity = {
+  id: string;
+  fecha: string;
+  tipo: 'venta' | 'compra';
+  titulo: string;
+  detalle: string;
+  monto: number;
+};
 
 @Component({
   selector: 'app-admin',
@@ -66,6 +79,8 @@ export class AdminComponent implements OnInit, OnDestroy {
   productos: Producto[] = [];
   categorias: string[] = [];
   loading = true;
+  loadingConfig = true;
+  savingConfig = false;
   importando = false;
   error = '';
   success = '';
@@ -73,6 +88,11 @@ export class AdminComponent implements OnInit, OnDestroy {
   editingId: string | null = null;
   form: Partial<Producto> = { nombre: '', precio: '', descripcion: '', img: '', categoria: 'cafe' };
   subiendoImg = false;
+  dashboardConfig: AdminConfig = { ...DEFAULT_ADMIN_CONFIG };
+  dashboardConfigForm: Omit<AdminConfig, 'id'> = {
+    meta_ventas_mensual: 0,
+    gastos_fijos_mensuales: 0,
+  };
 
   // Compras
   compras: CompraInsumo[] = [];
@@ -124,12 +144,14 @@ export class AdminComponent implements OnInit, OnDestroy {
   constructor(
     public prod: ProductosService,
     private comprasSvc: ComprasService,
-    private ventasSvc: VentasService
+    private ventasSvc: VentasService,
+    private adminConfigSvc: AdminConfigService
   ) {
     this.categorias = prod.getCategorias();
   }
 
   ngOnInit(): void {
+    this.cargarConfig();
     this.cargar();
     this.cargarCompras();
     this.cargarVentas();
@@ -213,6 +235,45 @@ export class AdminComponent implements OnInit, OnDestroy {
     return this.filtrarPorPeriodo(this.ventas);
   }
 
+  cargarConfig(): void {
+    this.loadingConfig = true;
+    this.adminConfigSvc.getConfig().subscribe((config) => {
+      this.dashboardConfig = config;
+      this.dashboardConfigForm = {
+        meta_ventas_mensual: config.meta_ventas_mensual,
+        gastos_fijos_mensuales: config.gastos_fijos_mensuales,
+      };
+      this.loadingConfig = false;
+      if (this.tab === 'resumen' && !this.loadingCompras && !this.loadingVentas) {
+        this.renderTendenciaDelayed();
+      }
+    });
+  }
+
+  guardarConfig(): void {
+    this.savingConfig = true;
+    this.error = '';
+    this.success = '';
+    const data = {
+      meta_ventas_mensual: Number(this.dashboardConfigForm.meta_ventas_mensual) || 0,
+      gastos_fijos_mensuales: Number(this.dashboardConfigForm.gastos_fijos_mensuales) || 0,
+    };
+
+    this.adminConfigSvc.guardar(data).subscribe((res) => {
+      this.savingConfig = false;
+      if (res.error) {
+        this.error = res.error;
+        return;
+      }
+      this.dashboardConfig = res.config ?? { id: true, ...data };
+      this.dashboardConfigForm = {
+        meta_ventas_mensual: this.dashboardConfig.meta_ventas_mensual,
+        gastos_fijos_mensuales: this.dashboardConfig.gastos_fijos_mensuales,
+      };
+      this.success = 'Configuración del dashboard guardada.';
+    });
+  }
+
   cargar(): void {
     this.loading = true;
     this.prod.getProductos().subscribe((data) => {
@@ -253,6 +314,13 @@ export class AdminComponent implements OnInit, OnDestroy {
 
   onPeriodoChange(): void {
     this.renderChartDelayed();
+  }
+
+  setPeriodoTendencia(value: string): void {
+    if (value === '7d' || value === '30d' || value === '6m') {
+      this.periodoTendencia = value;
+      this.renderTendenciaDelayed();
+    }
   }
 
   renderChart(): void {
@@ -739,6 +807,108 @@ export class AdminComponent implements OnInit, OnDestroy {
 
   totalVentas(): number {
     return this.ventasFiltradas.reduce((sum, v) => sum + (Number(v.monto) || 0), 0);
+  }
+
+  gastosFijosMensuales(): number {
+    return Number(this.dashboardConfig.gastos_fijos_mensuales) || 0;
+  }
+
+  metaVentasMensual(): number {
+    return Number(this.dashboardConfig.meta_ventas_mensual) || 0;
+  }
+
+  flujoCajaNetoEsteMes(): number {
+    return this.ventasEsteMes() - this.inversionInsumosEsteMes() - this.gastosFijosMensuales();
+  }
+
+  diasTranscurridosMes(): number {
+    return Math.max(new Date().getDate(), 1);
+  }
+
+  diasDelMesActual(): number {
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+  }
+
+  promedioVentaDiaria(): number {
+    return this.ventasEsteMes() / this.diasTranscurridosMes();
+  }
+
+  proyeccionVentasFinMes(): number {
+    return this.promedioVentaDiaria() * this.diasDelMesActual();
+  }
+
+  progresoMetaVentas(): number {
+    const meta = this.metaVentasMensual();
+    if (meta <= 0) return 0;
+    return Math.min((this.ventasEsteMes() / meta) * 100, 100);
+  }
+
+  montoFaltanteMeta(): number {
+    return Math.max(this.metaVentasMensual() - this.ventasEsteMes(), 0);
+  }
+
+  proyeccionCumpleMeta(): boolean {
+    const meta = this.metaVentasMensual();
+    return meta > 0 && this.proyeccionVentasFinMes() >= meta;
+  }
+
+  ventasPorDiaEsteMes(): Record<string, number> {
+    const { inicio, fin } = this.getRangoMensual();
+    const ventasPorDia: Record<string, number> = {};
+    this.ventas
+      .filter((v) => {
+        const f = this.normalizarFecha(v.fecha);
+        return f && f >= inicio && f <= fin;
+      })
+      .forEach((v) => {
+        const f = this.normalizarFecha(v.fecha);
+        if (f) ventasPorDia[f] = (ventasPorDia[f] ?? 0) + (Number(v.monto) || 0);
+      });
+    return ventasPorDia;
+  }
+
+  mejorDiaVentas(): { fecha: string; total: number } | null {
+    const entries = Object.entries(this.ventasPorDiaEsteMes());
+    if (entries.length === 0) return null;
+    const [fecha, total] = entries.reduce((best, current) =>
+      current[1] > best[1] ? current : best
+    );
+    return { fecha, total };
+  }
+
+  actividadReciente(): DashboardActivity[] {
+    const ventas = this.ventas.map((v, index) => ({
+      id: v.id ?? `venta-${index}-${v.fecha}`,
+      fecha: this.normalizarFecha(v.fecha),
+      tipo: 'venta' as const,
+      titulo: 'Venta registrada',
+      detalle: v.detalle || v.notas || 'Sin detalle',
+      monto: Number(v.monto) || 0,
+    }));
+
+    const compras = this.compras.map((c, index) => ({
+      id: c.id ?? `compra-${index}-${c.fecha}`,
+      fecha: this.normalizarFecha(c.fecha),
+      tipo: 'compra' as const,
+      titulo: 'Compra de insumo',
+      detalle: c.proveedor ? `${c.concepto} - ${c.proveedor}` : c.concepto,
+      monto: Number(c.monto) || 0,
+    }));
+
+    return [...ventas, ...compras]
+      .sort((a, b) => b.fecha.localeCompare(a.fecha))
+      .slice(0, 6);
+  }
+
+  formatearFechaCorta(fecha: string): string {
+    if (!fecha) return 'Sin fecha';
+    const [year, month, day] = fecha.split('-').map((part) => Number(part));
+    if (!year || !month || !day) return fecha;
+    return new Date(year, month - 1, day).toLocaleDateString('es-AR', {
+      day: '2-digit',
+      month: 'short',
+    });
   }
 
   // --- Bloque recuperación de inversión ---

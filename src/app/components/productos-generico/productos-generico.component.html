@@ -1,18 +1,115 @@
 <div class="container py-4 text-white">
-  <h2 class="mb-4">{{ titulo }}</h2>
-  <p>{{ texto }}</p>
-  <div class="row g-3">
-    <div class="col-md-4" *ngFor="let item of productos">
-      <div class="card h-100 bg-dark text-white">
-        <img [src]="item.img" class="card-img-top img-escalada" [alt]="item.nombre" />
-        <div class="card-body">
-          <h5 class="card-title">{{ item.nombre }}</h5>
-          <p class="card-text">{{ item.descripcion }}</p>
+  <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
+    <h2 class="mb-0">{{ titulo }}</h2>
+    @if (auth.isLoggedIn()) {
+      <div class="d-flex flex-wrap gap-2 align-items-center">
+        <span class="badge text-bg-info">Modo admin</span>
+        <button type="button" class="btn btn-primary btn-sm" (click)="abrirNuevo()">Nuevo producto</button>
+        <a class="btn btn-outline-light btn-sm" routerLink="/admin">Panel completo</a>
+      </div>
+    }
+  </div>
+
+  @if (texto) {
+    <p>{{ texto }}</p>
+  }
+
+  @if (error) {
+    <div class="alert alert-danger py-2">{{ error }}</div>
+  }
+  @if (success) {
+    <div class="alert alert-success py-2">{{ success }}</div>
+  }
+
+  @if (productos.length === 0) {
+    <p class="text-white-50">
+      No hay productos en esta sección.
+      @if (auth.isLoggedIn()) {
+        Podés agregar uno con "Nuevo producto".
+      }
+    </p>
+  } @else {
+    <div class="row g-3">
+      @for (item of productos; track item.id) {
+        <div class="col-md-4">
+          <div class="card h-100 bg-dark text-white producto-card">
+            @if (auth.isLoggedIn()) {
+              <div class="producto-admin-actions">
+                <button type="button" class="btn btn-sm btn-outline-light" (click)="abrirEditar(item)">
+                  Editar
+                </button>
+                <button type="button" class="btn btn-sm btn-outline-danger" (click)="eliminar(item)">
+                  Eliminar
+                </button>
+              </div>
+            }
+            <img [src]="item.img" class="card-img-top img-escalada" [alt]="item.nombre" />
+            <div class="card-body">
+              <h5 class="card-title">{{ item.nombre }}</h5>
+              <p class="card-text">{{ item.descripcion }}</p>
+            </div>
+            <div class="card-footer text-white">
+              <p class="text-white mb-0">${{ item.precio }}</p>
+            </div>
+          </div>
         </div>
-                <div class="card-footer text-white">
-          <p class="text-white">${{ item.precio }}</p>
+      }
+    </div>
+  }
+</div>
+
+@if (showModal) {
+  <div class="modal d-block producto-modal-backdrop" tabindex="-1" (click)="cerrarModal()">
+    <div class="modal-dialog modal-dialog-centered" (click)="$event.stopPropagation()">
+      <div class="modal-content bg-dark text-white">
+        <div class="modal-header">
+          <h5 class="modal-title">{{ editingId ? 'Editar producto' : 'Nuevo producto' }}</h5>
+          <button type="button" class="btn-close btn-close-white" aria-label="Cerrar" (click)="cerrarModal()"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label">Nombre</label>
+            <input type="text" class="form-control" [(ngModel)]="form.nombre" />
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Precio</label>
+            <input type="text" class="form-control" [(ngModel)]="form.precio" placeholder="ej. 1500" />
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Descripción</label>
+            <textarea class="form-control" rows="2" [(ngModel)]="form.descripcion"></textarea>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Imagen</label>
+            <input
+              type="file"
+              class="form-control form-control-sm mb-1"
+              accept="image/*"
+              (change)="onFileSelected($event)"
+              [disabled]="subiendoImg"
+            />
+            <input type="text" class="form-control" [(ngModel)]="form.img" placeholder="O pegá una URL" />
+            @if (form.img) {
+              <img [src]="form.img" alt="Vista previa" class="producto-preview mt-2" />
+            }
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Categoría</label>
+            <select class="form-select" [(ngModel)]="form.categoria">
+              @for (c of categorias; track c) {
+                <option [value]="c">{{ c }}</option>
+              }
+            </select>
+          </div>
+          @if (error) {
+            <div class="alert alert-danger py-2 mb-0">{{ error }}</div>
+          }
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" (click)="cerrarModal()">Cancelar</button>
+          <button type="button" class="btn btn-primary" (click)="guardar()">Guardar</button>
         </div>
       </div>
     </div>
   </div>
-</div>
+}

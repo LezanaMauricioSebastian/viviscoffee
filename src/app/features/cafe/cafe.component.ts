@@ -6,6 +6,8 @@ import { Component, OnInit } from '@angular/core';
     <app-productos-generico
       [titulo]="'Cafés'"
       [productos]="cafes"
+      categoria="cafe"
+      (productosChange)="cargar()"
     ></app-productos-generico>
   `,
 })
@@ -14,8 +16,12 @@ export class CafeComponent implements OnInit {
 
   constructor(private productos: ProductosService) {}
 
-  ngOnInit() {
-    this.productos.getProductos('cafe').subscribe(data => {
+  ngOnInit(): void {
+    this.cargar();
+  }
+
+  cargar(): void {
+    this.productos.getProductos('cafe').subscribe((data) => {
       this.cafes = data;
     });
   }

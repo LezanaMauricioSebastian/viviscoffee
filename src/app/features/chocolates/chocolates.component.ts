@@ -6,6 +6,8 @@ import { Component, OnInit } from '@angular/core';
     <app-productos-generico
       [titulo]="'Chocolates'"
       [productos]="chocolates"
+      categoria="chocolates"
+      (productosChange)="cargar()"
     ></app-productos-generico>
   `,
 })
@@ -14,8 +16,12 @@ export class ChocolatesComponent implements OnInit {
 
   constructor(private productos: ProductosService) {}
 
-  ngOnInit() {
-    this.productos.getProductos('chocolates').subscribe(data => {
+  ngOnInit(): void {
+    this.cargar();
+  }
+
+  cargar(): void {
+    this.productos.getProductos('chocolates').subscribe((data) => {
       this.chocolates = data;
     });
   }

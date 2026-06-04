@@ -7,6 +7,8 @@ import { ProductosService } from '../../core/services/productos.service';
     <app-productos-generico
       [titulo]="'Vegan'"
       [productos]="vegan"
+      categoria="vegan"
+      (productosChange)="cargar()"
     ></app-productos-generico>
   `,
 })
@@ -15,8 +17,12 @@ export class VeganComponent implements OnInit {
 
   constructor(private productos: ProductosService) {}
 
-  ngOnInit() {
-    this.productos.getProductos('vegan').subscribe(data => {
+  ngOnInit(): void {
+    this.cargar();
+  }
+
+  cargar(): void {
+    this.productos.getProductos('vegan').subscribe((data) => {
       this.vegan = data;
     });
   }

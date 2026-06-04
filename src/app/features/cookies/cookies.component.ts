@@ -8,6 +8,8 @@ import { ProductosService } from '../../core/services/productos.service';
       [titulo]="'Cookies'"
       [texto]='"Nuestras Deliciosas Cookies se venden apartir de las 4 unidades y las podes combinar como quieras !"'
       [productos]="cookies"
+      categoria="cookies"
+      (productosChange)="cargar()"
     ></app-productos-generico>
   `,
 })
@@ -16,8 +18,12 @@ export class CookiesComponent implements OnInit {
 
   constructor(private productos: ProductosService) {}
 
-  ngOnInit() {
-    this.productos.getProductos('cookies').subscribe(data => {
+  ngOnInit(): void {
+    this.cargar();
+  }
+
+  cargar(): void {
+    this.productos.getProductos('cookies').subscribe((data) => {
       this.cookies = data;
     });
   }

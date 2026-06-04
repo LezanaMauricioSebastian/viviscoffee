@@ -7,6 +7,8 @@ import { ProductosService } from '../../core/services/productos.service';
     <app-productos-generico
       [titulo]="'Salado'"
       [productos]="salado"
+      categoria="salado"
+      (productosChange)="cargar()"
     ></app-productos-generico>
   `,
 })
@@ -15,8 +17,12 @@ export class SaladoComponent implements OnInit {
 
   constructor(private productos: ProductosService) {}
 
-  ngOnInit() {
-    this.productos.getProductos('salado').subscribe(data => {
+  ngOnInit(): void {
+    this.cargar();
+  }
+
+  cargar(): void {
+    this.productos.getProductos('salado').subscribe((data) => {
       this.salado = data;
     });
   }

@@ -7,6 +7,8 @@ import { ProductosService } from '../../core/services/productos.service';
     <app-productos-generico
       [titulo]="'Cajas'"
       [productos]="cajas"
+      categoria="box"
+      (productosChange)="cargar()"
     ></app-productos-generico>
   `,
 })
@@ -15,8 +17,12 @@ export class BoxComponent implements OnInit {
 
   constructor(private productos: ProductosService) {}
 
-  ngOnInit() {
-    this.productos.getProductos('box').subscribe(data => {
+  ngOnInit(): void {
+    this.cargar();
+  }
+
+  cargar(): void {
+    this.productos.getProductos('box').subscribe((data) => {
       this.cajas = data;
     });
   }

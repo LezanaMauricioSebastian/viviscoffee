@@ -1,4 +1,5 @@
 import { Component, EventEmitter, Input, Output } from '@angular/core';
+import { forkJoin } from 'rxjs';
 import { AuthService } from '../../core/services/auth.service';
 import { ProductosService, Producto } from '../../core/services/productos.service';
 
@@ -20,6 +21,7 @@ export class ProductosGenericoComponent {
   editingId: string | null = null;
   form: Partial<Producto> = { nombre: '', precio: '', descripcion: '', img: '', categoria: 'cafe' };
   subiendoImg = false;
+  reordenandoProductoId: string | null = null;
   error = '';
   success = '';
 
@@ -98,6 +100,52 @@ export class ProductosGenericoComponent {
         this.success = 'Producto eliminado.';
         this.productosChange.emit();
       }
+    });
+  }
+
+  private productosOrdenados(): Producto[] {
+    return [...this.productos].sort((a, b) => (a.orden ?? 0) - (b.orden ?? 0));
+  }
+
+  puedeMoverProducto(p: Producto, dir: -1 | 1): boolean {
+    const list = this.productosOrdenados();
+    const idx = list.findIndex((x) => x.id === p.id);
+    const swapIdx = idx + dir;
+    return idx >= 0 && swapIdx >= 0 && swapIdx < list.length;
+  }
+
+  moverProducto(p: Producto, dir: -1 | 1): void {
+    if (!p.id || this.reordenandoProductoId) return;
+    const list = this.productosOrdenados();
+    const idx = list.findIndex((x) => x.id === p.id);
+    const swapIdx = idx + dir;
+    if (swapIdx < 0 || swapIdx >= list.length) return;
+    const other = list[swapIdx];
+    if (!other.id) return;
+
+    const ordenP = p.orden ?? idx;
+    const ordenO = other.orden ?? swapIdx;
+    this.reordenandoProductoId = p.id;
+    this.error = '';
+    this.success = '';
+
+    forkJoin([
+      this.prod.actualizar(p.id, { orden: ordenO }),
+      this.prod.actualizar(other.id, { orden: ordenP }),
+    ]).subscribe({
+      next: ([r1, r2]) => {
+        this.reordenandoProductoId = null;
+        if (r1.error || r2.error) {
+          this.error = r1.error ?? r2.error ?? 'Error al reordenar';
+          return;
+        }
+        this.success = 'Orden actualizado.';
+        this.productosChange.emit();
+      },
+      error: () => {
+        this.reordenandoProductoId = null;
+        this.error = 'Error al reordenar';
+      },
     });
   }
 

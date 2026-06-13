@@ -35,6 +35,44 @@
           <div class="card h-100 bg-dark text-white producto-card">
             @if (auth.isLoggedIn()) {
               <div class="producto-admin-actions">
+                <div class="producto-orden-actions">
+                  <button
+                    type="button"
+                    class="btn btn-sm btn-outline-light producto-orden-btn producto-orden-mobile"
+                    title="Mover antes"
+                    [disabled]="!puedeMoverProducto(item, -1) || reordenandoProductoId === item.id"
+                    (click)="moverProducto(item, -1)"
+                  >
+                    ↑
+                  </button>
+                  <button
+                    type="button"
+                    class="btn btn-sm btn-outline-light producto-orden-btn producto-orden-mobile"
+                    title="Mover después"
+                    [disabled]="!puedeMoverProducto(item, 1) || reordenandoProductoId === item.id"
+                    (click)="moverProducto(item, 1)"
+                  >
+                    ↓
+                  </button>
+                  <button
+                    type="button"
+                    class="btn btn-sm btn-outline-light producto-orden-btn producto-orden-desktop"
+                    title="Mover a la izquierda"
+                    [disabled]="!puedeMoverProducto(item, -1) || reordenandoProductoId === item.id"
+                    (click)="moverProducto(item, -1)"
+                  >
+                    ←
+                  </button>
+                  <button
+                    type="button"
+                    class="btn btn-sm btn-outline-light producto-orden-btn producto-orden-desktop"
+                    title="Mover a la derecha"
+                    [disabled]="!puedeMoverProducto(item, 1) || reordenandoProductoId === item.id"
+                    (click)="moverProducto(item, 1)"
+                  >
+                    →
+                  </button>
+                </div>
                 <button type="button" class="btn btn-sm btn-outline-light" (click)="abrirEditar(item)">
                   Editar
                 </button>

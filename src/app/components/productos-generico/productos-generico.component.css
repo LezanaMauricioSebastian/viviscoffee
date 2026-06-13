@@ -7,6 +7,7 @@
 }
 
 .producto-admin-actions {
+  align-items: center;
   display: flex;
   flex-wrap: wrap;
   gap: 0.35rem;
@@ -14,6 +15,35 @@
   padding: 0.5rem 0.5rem 0;
   position: relative;
   z-index: 2;
+}
+
+.producto-orden-actions {
+  display: inline-flex;
+  gap: 0.25rem;
+}
+
+.producto-orden-btn {
+  min-width: 2rem;
+  padding-left: 0.4rem;
+  padding-right: 0.4rem;
+}
+
+.producto-orden-desktop {
+  display: none;
+}
+
+.producto-orden-mobile {
+  display: inline-block;
+}
+
+@media (min-width: 768px) {
+  .producto-orden-desktop {
+    display: inline-block;
+  }
+
+  .producto-orden-mobile {
+    display: none;
+  }
 }
 
 .producto-modal-backdrop {

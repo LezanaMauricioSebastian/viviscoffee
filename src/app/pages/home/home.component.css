@@ -1,26 +1,151 @@
-.imagen-cafe {
-  width: 100%;
-  height: auto;
-  display: block;
-    margin: 0 auto;
-    z-index: 1; /* Asegura que la imagen esté detrás del contenido principal */
-}
-.container{
-  background-color: #18333F;
-}
-.ofertas-grid {
+.hero {
+  position: relative;
+  min-height: 100svh;
+  min-height: 100vh;
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: 1rem;
-  padding: 1.5rem;
+  place-items: end stretch;
+  overflow: hidden;
+  color: var(--color-foam);
 }
 
-.oferta-card img {
-  height: 200px;
-  object-fit: cover;
+.hero__media {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
 }
-.card-img-top {
-  height: 300px; /* o el alto que prefieras */
+
+.hero__image {
+  width: 100%;
+  height: 100%;
   object-fit: cover;
   object-position: center;
+  display: block;
+  animation: soft-rise 1.4s var(--ease-out) both;
+}
+
+.hero__veil {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: linear-gradient(
+    180deg,
+    rgba(15, 34, 41, 0.2) 0%,
+    rgba(15, 34, 41, 0.05) 45%,
+    rgba(15, 34, 41, 0.75) 78%,
+    rgba(15, 34, 41, 0.95) 100%
+  );
+  pointer-events: none;
+}
+
+.hero__content {
+  position: relative;
+  z-index: 2;
+  max-width: 42rem;
+  padding: 2rem 1.5rem 4.5rem;
+  margin: 0 auto;
+  text-align: center;
+  animation: fade-up 0.9s var(--ease-out) 0.25s both;
+}
+
+.hero__lead {
+  margin: 0 auto 1.35rem;
+  max-width: 26rem;
+  font-size: clamp(1rem, 2.2vw, 1.15rem);
+  font-weight: 300;
+  color: rgba(245, 239, 230, 0.9);
+}
+
+.hero__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.75rem;
+}
+
+.btn-primary,
+.btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.85rem;
+  padding: 0.7rem 1.35rem;
+  border-radius: 2px;
+  font-family: var(--font-body);
+  font-size: 0.92rem;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-decoration: none;
+  transition: transform 0.25s var(--ease-out), background-color 0.25s ease, color 0.25s ease,
+    border-color 0.25s ease;
+}
+
+.btn-primary {
+  background: var(--color-cream);
+  color: var(--color-ink-deep);
+  border: 1px solid var(--color-cream);
+}
+
+.btn-primary:hover {
+  background: #fff;
+  border-color: #fff;
+  transform: translateY(-2px);
+}
+
+.btn-ghost {
+  background: transparent;
+  color: var(--color-foam);
+  border: 1px solid rgba(232, 220, 200, 0.45);
+}
+
+.btn-ghost:hover {
+  border-color: var(--color-cream);
+  color: var(--color-cream);
+  transform: translateY(-2px);
+}
+
+.hero__scroll {
+  position: absolute;
+  z-index: 2;
+  left: 50%;
+  bottom: 1.1rem;
+  width: 1.5rem;
+  height: 2.2rem;
+  transform: translateX(-50%);
+  border: 1px solid rgba(232, 220, 200, 0.35);
+  border-radius: 999px;
+  text-decoration: none;
+  animation: fade-up 1s var(--ease-out) 0.6s both;
+}
+
+.hero__scroll span {
+  display: block;
+  width: 4px;
+  height: 4px;
+  margin: 0.4rem auto 0;
+  border-radius: 50%;
+  background: var(--color-cream);
+  animation: scroll-dot 1.6s var(--ease-out) infinite;
+}
+
+@keyframes scroll-dot {
+  0% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  80%,
+  100% {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+}
+
+.home-ofertas {
+  background: var(--color-ink);
+  padding-top: 0.5rem;
+}
+
+@media (min-width: 768px) {
+  .hero__content {
+    padding: 2.5rem 2rem 5rem;
+  }
 }

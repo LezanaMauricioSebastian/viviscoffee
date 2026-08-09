@@ -1,60 +1,42 @@
-<nav class="navbar navbar-expand-lg navbar-dark bg-dark sticky-top">
-  <div class="container-fluid">
-
-    <!-- Botón hamburguesa a la izquierda -->
+<nav class="site-nav" [class.is-solid]="isSolid" [class.is-open]="menuOpen">
+  <div class="site-nav__inner">
     <button
-      class="navbar-toggler me-2"
       type="button"
-      data-bs-toggle="collapse"
-      data-bs-target="#navbarCafe"
-      aria-controls="navbarCafe"
-      aria-expanded="false"
-      aria-label="Toggle navigation"
+      class="site-nav__toggle"
+      (click)="toggleMenu()"
+      [attr.aria-expanded]="menuOpen"
+      aria-controls="navMenu"
+      aria-label="Abrir menú"
     >
-      <span class="navbar-toggler-icon"></span>
+      <span></span>
+      <span></span>
+      <span></span>
     </button>
 
-    <!-- Logo -->
-    <a class="navbar-brand" routerLink="/">☕ Café al Paso</a>
+    <a class="site-nav__brand" routerLink="/" (click)="closeMenu()">
+      <span class="site-nav__brand-name brand-type">Vivi's Coffee</span>
+      <span class="site-nav__brand-tag">Café al paso</span>
+    </a>
 
-    <!-- Menú -->
-    <div class="collapse navbar-collapse" id="navbarCafe">
-      <ul class="navbar-nav ms-auto mb-2 mb-lg-0">
-        @if (auth.isLoggedIn()) {
-          <li class="nav-item">
-            <a class="nav-link" routerLink="/admin">Admin</a>
-          </li>
-          <li class="nav-item">
-            <button class="nav-link btn btn-link" (click)="logout()">Cerrar sesión</button>
-          </li>
-        } @else {
-          <li class="nav-item">
-            <a class="nav-link" routerLink="/login">Iniciar sesión</a>
-          </li>
-        }
-        <li class="nav-item">
-          <a class="nav-link" routerLink="/">Inicio</a>
-        </li>
-        <li class="nav-item">
-          <a class="nav-link" routerLink="/cafe">Café al paso</a>
-        </li>
-        <li class="nav-item">
-          <a class="nav-link" routerLink="/chocolates">Chocolates</a>
-        </li>
-        <li class="nav-item">
-          <a class="nav-link" routerLink="/box">Box</a>
-        </li>
-        <li class="nav-item">
-          <a class="nav-link" routerLink="/cookies">Cookies</a>
-        </li>
-        <li class="nav-item">
-          <a class="nav-link" routerLink="/salado">Salado</a>
-        </li>
-        <li class="nav-item">
-          <a class="nav-link" routerLink="/vegan">Vegan</a>
-        </li>
+    <div class="site-nav__menu" id="navMenu" [class.is-open]="menuOpen">
+      <ul class="site-nav__links">
+        <li><a routerLink="/" routerLinkActive="is-active" [routerLinkActiveOptions]="{ exact: true }" (click)="closeMenu()">Inicio</a></li>
+        <li><a routerLink="/cafe" routerLinkActive="is-active" (click)="closeMenu()">Café</a></li>
+        <li><a routerLink="/chocolates" routerLinkActive="is-active" (click)="closeMenu()">Chocolates</a></li>
+        <li><a routerLink="/box" routerLinkActive="is-active" (click)="closeMenu()">Box</a></li>
+        <li><a routerLink="/cookies" routerLinkActive="is-active" (click)="closeMenu()">Cookies</a></li>
+        <li><a routerLink="/salado" routerLinkActive="is-active" (click)="closeMenu()">Salado</a></li>
+        <li><a routerLink="/vegan" routerLinkActive="is-active" (click)="closeMenu()">Vegan</a></li>
       </ul>
-    </div>
 
+      <div class="site-nav__auth">
+        @if (auth.isLoggedIn()) {
+          <a routerLink="/admin" (click)="closeMenu()">Admin</a>
+          <button type="button" class="site-nav__ghost" (click)="logout(); closeMenu()">Cerrar sesión</button>
+        } @else {
+          <a routerLink="/login" class="site-nav__login" (click)="closeMenu()">Iniciar sesión</a>
+        }
+      </div>
+    </div>
   </div>
 </nav>

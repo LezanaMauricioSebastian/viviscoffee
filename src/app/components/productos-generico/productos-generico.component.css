@@ -1,9 +1,76 @@
 .container {
-  background-color: #18333f;
+  background-color: transparent;
+  max-width: 1200px;
+}
+
+.container h2 {
+  font-family: var(--font-display);
+  font-size: clamp(1.85rem, 4vw, 2.6rem);
+  font-weight: 600;
+  color: var(--color-foam);
+  letter-spacing: 0.01em;
 }
 
 .producto-card {
   position: relative;
+  background: transparent !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  overflow: hidden;
+  color: var(--color-foam) !important;
+  transition: transform 0.35s var(--ease-out);
+}
+
+.producto-card:hover {
+  transform: translateY(-4px);
+}
+
+.producto-card .card-img-top,
+.producto-card .img-escalada {
+  height: 240px;
+  width: 100%;
+  object-fit: cover;
+  object-position: center;
+  border-radius: 2px;
+  transition: transform 0.5s var(--ease-out);
+}
+
+.producto-card:hover .card-img-top,
+.producto-card:hover .img-escalada {
+  transform: scale(1.03);
+}
+
+.producto-card .card-body {
+  padding: 1rem 0.15rem 0.5rem;
+}
+
+.producto-card .card-title {
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+  font-weight: 600;
+  margin-bottom: 0.35rem;
+  color: var(--color-foam);
+}
+
+.producto-card .card-text {
+  font-size: 0.9rem;
+  font-weight: 300;
+  color: rgba(245, 239, 230, 0.7);
+  margin-bottom: 0;
+}
+
+.producto-card .card-footer {
+  background: transparent !important;
+  border: 0 !important;
+  padding: 0.25rem 0.15rem 0.75rem;
+}
+
+.producto-card .card-footer p {
+  font-family: var(--font-body);
+  font-size: 1rem;
+  font-weight: 500;
+  color: var(--color-bean);
+  letter-spacing: 0.02em;
 }
 
 .producto-admin-actions {
@@ -12,7 +79,7 @@
   flex-wrap: wrap;
   gap: 0.35rem;
   justify-content: flex-end;
-  padding: 0.5rem 0.5rem 0;
+  padding: 0.5rem 0 0.35rem;
   position: relative;
   z-index: 2;
 }
@@ -43,6 +110,11 @@
 
   .producto-orden-mobile {
     display: none;
+  }
+
+  .producto-card .card-img-top,
+  .producto-card .img-escalada {
+    height: 280px;
   }
 }
 

@@ -1,7 +1,39 @@
-<img src="assets/fondo.jpeg" alt="Un café bien fachero" class="imagen-cafe">
-<app-productos-generico
-  titulo="Ofertas del Dia"
-  [productos]="ofertas"
-  categoria="promo"
-  (productosChange)="cargar()"
-></app-productos-generico>
+<section class="hero" aria-label="Vivi's Coffee">
+  <div class="hero__media">
+    <img
+      src="assets/fondo.jpeg"
+      alt="Vivi's Coffee — café al paso"
+      class="hero__image"
+      width="1920"
+      height="1080"
+      fetchpriority="high"
+    />
+  </div>
+  <div class="hero__veil"></div>
+  <div class="hero__content">
+    <p class="hero__lead">Cookies, chocolates y el café que pedís a diario.</p>
+    <div class="hero__actions">
+      <a class="btn-primary" routerLink="/cafe">Ver café</a>
+      <a
+        class="btn-ghost"
+        href="https://wa.me/5493795134827?text=Hola%2C%20quiero%20hacer%20una%20consulta"
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        Pedir por WhatsApp
+      </a>
+    </div>
+  </div>
+  <a class="hero__scroll" href="#ofertas" aria-label="Ver ofertas">
+    <span></span>
+  </a>
+</section>
+
+<section id="ofertas" class="home-ofertas">
+  <app-productos-generico
+    titulo="Ofertas del día"
+    [productos]="ofertas"
+    categoria="promo"
+    (productosChange)="cargar()"
+  ></app-productos-generico>
+</section>

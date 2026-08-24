@@ -1,0 +1,1 @@
+function r(e){let t=(e??``).trim();if(!t)return`assets/fondo.jpeg`;if(/^https?:\/\//i.test(t)||t.startsWith(`data:`))return t;let s=t.replace(/^\//,``);return s.startsWith(`assets/`)?s:`assets/${s}`}export{r as t};

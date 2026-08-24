@@ -80,6 +80,97 @@
         </div>
       </div>
 
+      <div class="card resumen-card mb-4">
+        <div class="card-body">
+          <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
+            <div>
+              <h6 class="card-title text-info mb-1">Carga rápida del mes</h6>
+              <p class="resumen-texto-gris mb-0">Anotá una venta con monto y hasta 2 productos. Ideal para ir cargando el mes sin abrir Ventas.</p>
+            </div>
+            @if (estimadoMontoRapido() > 0) {
+              <small class="resumen-texto-gris">Estimado catálogo: ${{ estimadoMontoRapido() | number }}</small>
+            }
+          </div>
+
+          <div class="row g-2 align-items-end">
+            <div class="col-6 col-md-3 col-lg-2">
+              <label class="form-label small text-white-50">Fecha</label>
+              <input type="date" class="form-control form-control-sm" [(ngModel)]="formRapidoVenta.fecha" name="rapidoFecha" />
+            </div>
+            <div class="col-6 col-md-3 col-lg-2">
+              <label class="form-label small text-white-50">Monto ($)</label>
+              <input
+                type="number"
+                class="form-control form-control-sm"
+                min="0"
+                step="100"
+                [(ngModel)]="formRapidoVenta.monto"
+                (input)="onMontoRapidoManual()"
+                name="rapidoMonto"
+                placeholder="0"
+              />
+            </div>
+            <div class="col-12 col-md-6 col-lg-3">
+              <label class="form-label small text-white-50">Nota / cliente (opcional)</label>
+              <input
+                type="text"
+                class="form-control form-control-sm"
+                [(ngModel)]="formRapidoVenta.notas"
+                name="rapidoNotas"
+                placeholder="ej. tía Andrea, Sincer"
+              />
+            </div>
+            <div class="col-12 col-lg-5 d-flex flex-wrap gap-2 justify-content-lg-end">
+              <button
+                type="button"
+                class="btn btn-success btn-sm"
+                (click)="guardarVentaRapida()"
+                [disabled]="savingRapido"
+              >
+                {{ savingRapido ? 'Guardando...' : 'Registrar venta' }}
+              </button>
+            </div>
+          </div>
+
+          <div class="rapido-items mt-3">
+            @for (item of formRapidoVenta.items; track item; let i = $index) {
+              <div class="row g-2 align-items-end mb-2">
+                <div class="col-8 col-md-9">
+                  <label class="form-label small text-white-50">Producto {{ i + 1 }}</label>
+                  <select
+                    class="form-select form-select-sm"
+                    [(ngModel)]="item.productoId"
+                    (ngModelChange)="onItemRapidoChange()"
+                    [name]="'rapidoProd' + i"
+                  >
+                    <option value="">— Opcional —</option>
+                    @for (p of productosParaRapido; track p.id) {
+                      <option [value]="p.id">{{ p.nombre }} · ${{ p.precio }}</option>
+                    }
+                  </select>
+                </div>
+                <div class="col-4 col-md-3">
+                  <label class="form-label small text-white-50">Cant.</label>
+                  <input
+                    type="number"
+                    class="form-control form-control-sm"
+                    min="1"
+                    step="1"
+                    [(ngModel)]="item.cantidad"
+                    (ngModelChange)="onItemRapidoChange()"
+                    [name]="'rapidoQty' + i"
+                  />
+                </div>
+              </div>
+            }
+          </div>
+
+          @if (armarDetalleRapido()) {
+            <p class="resumen-texto-gris small mb-0 mt-1">Detalle: {{ armarDetalleRapido() }}</p>
+          }
+        </div>
+      </div>
+
       <div class="row g-3 mb-4">
         <div class="col-lg-7">
           <div class="card resumen-card h-100">

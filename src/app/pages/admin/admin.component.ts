@@ -51,6 +51,10 @@ type DashboardActivity = {
   detalle: string;
   monto: number;
 };
+type QuickVentaItem = {
+  productoId: string;
+  cantidad: number;
+};
 
 @Component({
   selector: 'app-admin',
@@ -147,6 +151,11 @@ export class AdminComponent implements OnInit, OnDestroy {
     detalle: '',
     notas: '',
   };
+
+  /** Carga rápida en Resumen (enfoque mensual / hobby) */
+  savingRapido = false;
+  formRapidoVenta = this.nuevoFormRapido();
+  private montoRapidoAutollenado = true;
 
   constructor(
     public prod: ProductosService,
@@ -895,6 +904,111 @@ export class AdminComponent implements OnInit, OnDestroy {
     }
     this.error = '';
     this.success = '';
+  }
+
+  private nuevoFormRapido(): {
+    fecha: string;
+    monto: number;
+    notas: string;
+    items: QuickVentaItem[];
+  } {
+    return {
+      fecha: new Date().toISOString().slice(0, 10),
+      monto: 0,
+      notas: '',
+      items: [
+        { productoId: '', cantidad: 1 },
+        { productoId: '', cantidad: 1 },
+      ],
+    };
+  }
+
+  get productosParaRapido(): Producto[] {
+    return [...this.productos].sort((a, b) =>
+      (a.nombre || '').localeCompare(b.nombre || '', 'es', { sensitivity: 'base' })
+    );
+  }
+
+  parsePrecioProducto(precio: string | null | undefined): number | null {
+    if (precio == null) return null;
+    const digits = String(precio).replace(/[^\d]/g, '');
+    if (!digits) return null;
+    const n = Number(digits);
+    return Number.isFinite(n) && n > 0 ? n : null;
+  }
+
+  estimadoMontoRapido(): number {
+    return this.formRapidoVenta.items.reduce((sum, item) => {
+      if (!item.productoId) return sum;
+      const p = this.productos.find((x) => x.id === item.productoId);
+      const unit = this.parsePrecioProducto(p?.precio);
+      if (unit == null) return sum;
+      const qty = Math.max(1, Number(item.cantidad) || 1);
+      return sum + unit * qty;
+    }, 0);
+  }
+
+  onItemRapidoChange(): void {
+    if (!this.montoRapidoAutollenado) return;
+    const estimado = this.estimadoMontoRapido();
+    if (estimado > 0) {
+      this.formRapidoVenta.monto = estimado;
+    }
+  }
+
+  onMontoRapidoManual(): void {
+    this.montoRapidoAutollenado = false;
+  }
+
+  armarDetalleRapido(): string {
+    const parts = this.formRapidoVenta.items
+      .filter((item) => item.productoId)
+      .map((item) => {
+        const p = this.productos.find((x) => x.id === item.productoId);
+        const nombre = p?.nombre?.trim() || 'Producto';
+        const qty = Math.max(1, Number(item.cantidad) || 1);
+        return qty > 1 ? `${qty}× ${nombre}` : nombre;
+      });
+    return parts.join(' · ');
+  }
+
+  guardarVentaRapida(): void {
+    const monto = Number(this.formRapidoVenta.monto) || 0;
+    if (monto <= 0) {
+      this.error = 'Indicá el monto de la venta.';
+      this.success = '';
+      return;
+    }
+    if (!this.formRapidoVenta.fecha) {
+      this.error = 'Indicá la fecha.';
+      this.success = '';
+      return;
+    }
+
+    const detalle = this.armarDetalleRapido();
+    const data: Omit<Venta, 'id'> = {
+      fecha: this.formRapidoVenta.fecha,
+      monto,
+      detalle,
+      notas: (this.formRapidoVenta.notas || '').trim(),
+    };
+
+    this.savingRapido = true;
+    this.error = '';
+    this.success = '';
+    this.ventasSvc.crear(data).subscribe((res) => {
+      this.savingRapido = false;
+      if ('error' in res) {
+        this.error = res.error;
+        return;
+      }
+      this.success = detalle
+        ? `Venta registrada: ${detalle} ($${monto.toLocaleString('es-AR')}).`
+        : `Venta de $${monto.toLocaleString('es-AR')} registrada.`;
+      this.formRapidoVenta = this.nuevoFormRapido();
+      this.montoRapidoAutollenado = true;
+      this.cargarVentas();
+    });
   }
 
   guardarVenta(): void {

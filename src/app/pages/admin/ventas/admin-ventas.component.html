@@ -116,7 +116,12 @@
                   </ul>
                 }
                 @if (item.productoId) {
-                  <small class="text-success">Seleccionado del catálogo</small>
+                  <small class="text-success d-block">Seleccionado del catálogo</small>
+                  @if (state.hintMayoristaVenta(item); as hint) {
+                    <small [class.text-info]="state.aplicaMayoristaVenta(item)" [class.text-white-50]="!state.aplicaMayoristaVenta(item)">
+                      {{ hint }}
+                    </small>
+                  }
                 }
               </div>
             </div>
@@ -161,7 +166,12 @@
         step="0.01"
       />
       @if (state.estimadoMontoVenta() > 0) {
-        <small class="resumen-texto-gris">Suma catálogo: ${{ state.estimadoMontoVenta() | number }} (editable)</small>
+        <small class="resumen-texto-gris d-block">
+          Suma catálogo: ${{ state.estimadoMontoVenta() | number }} (editable)
+          @if (state.hayMayoristaEnVenta()) {
+            · incluye precio mayorista
+          }
+        </small>
       }
     </div>
     <div class="mb-3">

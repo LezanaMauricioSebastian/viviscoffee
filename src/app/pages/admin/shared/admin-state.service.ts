@@ -1326,6 +1326,33 @@ export class AdminStateService implements OnDestroy {
     return this.parsePrecioProducto(p.precio);
   }
 
+  aplicaMayoristaVenta(item: QuickVentaItem): boolean {
+    if (!item.productoId) return false;
+    const p = this.productos().find((x) => x.id === item.productoId);
+    if (!p || p.precio_mayorista == null || !Number.isFinite(Number(p.precio_mayorista))) {
+      return false;
+    }
+    const qty = Math.max(1, Number(item.cantidad) || 1);
+    const min = p.min_mayorista ?? 4;
+    return qty >= min;
+  }
+
+  hintMayoristaVenta(item: QuickVentaItem): string {
+    if (!item.productoId) return '';
+    const p = this.productos().find((x) => x.id === item.productoId);
+    if (!p || p.precio_mayorista == null) return '';
+    const min = p.min_mayorista ?? 4;
+    const mayorista = Math.round(Number(p.precio_mayorista));
+    if (this.aplicaMayoristaVenta(item)) {
+      return `Precio mayorista (${min}+): $${mayorista} c/u`;
+    }
+    return `Desde ${min} u: $${mayorista} c/u`;
+  }
+
+  hayMayoristaEnVenta(): boolean {
+    return this.formVentaItems.some((item) => this.aplicaMayoristaVenta(item));
+  }
+
   estimadoMontoRapido(): number {
     return this.formRapidoVenta.items.reduce((sum, item) => {
       if (!item.productoId) return sum;

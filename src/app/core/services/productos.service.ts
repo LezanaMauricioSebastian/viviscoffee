@@ -38,9 +38,21 @@ export function syncPrecioDisplay(p: {
 /** Etiqueta de precio para UI pública/admin. */
 export function formatPrecioLabel(p: Producto): string {
   if (p.precio_a_consultar) return 'Consultar';
-  if (p.precio_num != null && Number.isFinite(Number(p.precio_num))) {
-    return `$${Math.round(Number(p.precio_num))}`;
+  const retail =
+    p.precio_num != null && Number.isFinite(Number(p.precio_num))
+      ? Math.round(Number(p.precio_num))
+      : null;
+  const mayorista =
+    p.precio_mayorista != null && Number.isFinite(Number(p.precio_mayorista))
+      ? Math.round(Number(p.precio_mayorista))
+      : null;
+  const min = p.min_mayorista ?? 4;
+
+  if (retail != null && mayorista != null) {
+    return `$${retail} · ${min}+: $${mayorista}`;
   }
+  if (retail != null) return `$${retail}`;
+
   const legacy = (p.precio ?? '').trim();
   if (!legacy) return 'Consultar';
   return legacy.startsWith('$') ? legacy : `$${legacy}`;

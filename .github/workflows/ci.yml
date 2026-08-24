@@ -31,4 +31,4 @@ jobs:
         run: npm run build
 
       - name: Unit tests
-        run: npx ng test --watch=false --browsers=ChromeHeadless --no-progress
+        run: npx ng test --watch=false --no-progress

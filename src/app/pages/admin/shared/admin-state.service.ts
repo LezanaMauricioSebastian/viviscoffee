@@ -3,7 +3,12 @@ import { parseVentaDetalle } from '../../../shared/utils/parse-venta-detalle';
 import { parsePrecio } from '../../../shared/utils/parse-precio';
 import { forkJoin } from 'rxjs';
 import * as Papa from 'papaparse';
-import { ProductosService, Producto } from '../../../core/services/productos.service';
+import {
+  ProductosService,
+  Producto,
+  syncPrecioDisplay,
+  formatPrecioLabel,
+} from '../../../core/services/productos.service';
 import { ComprasService, CompraInsumo } from '../../../core/services/compras.service';
 import { VentasService, Venta } from '../../../core/services/ventas.service';
 import {
@@ -95,11 +100,15 @@ export class AdminStateService implements OnDestroy {
   form: Partial<Producto> = {
     nombre: '',
     precio: '',
-
+    precio_num: null,
+    precio_mayorista: null,
+    min_mayorista: 4,
+    precio_a_consultar: false,
     descripcion: '',
     img: '',
     categoria: 'cafe',
   };
+  readonly formatPrecioLabel = formatPrecioLabel;
   subiendoImg = false;
   readonly filtroProductoBusqueda = signal('');
   readonly filtroProductoCategoria = signal('');
@@ -943,10 +952,38 @@ export class AdminStateService implements OnDestroy {
     });
   }
 
+  private toNullableNumber(value: unknown): number | null {
+    if (value == null || value === '') return null;
+    const n = Number(value);
+    return Number.isFinite(n) ? n : null;
+  }
+
+  private emptyProductoForm(): Partial<Producto> {
+    return {
+      nombre: '',
+      precio: '',
+      precio_num: null,
+      precio_mayorista: null,
+      min_mayorista: 4,
+      precio_a_consultar: false,
+      descripcion: '',
+      img: '',
+      categoria: 'cafe',
+    };
+  }
+
+  onPrecioEstructuradoChange(): void {
+    if (this.form.precio_a_consultar) {
+      this.form.precio = 'Consultar';
+      return;
+    }
+    this.form.precio = syncPrecioDisplay(this.form);
+  }
+
   abrirNuevo(): void {
     this.showModal = true;
     this.editingId = null;
-    this.form = { nombre: '', precio: '', descripcion: '', img: '', categoria: 'cafe' };
+    this.form = this.emptyProductoForm();
     this.error = '';
     this.success = '';
   }
@@ -954,7 +991,13 @@ export class AdminStateService implements OnDestroy {
   abrirEditar(p: Producto): void {
     this.showModal = true;
     this.editingId = p.id ?? null;
-    this.form = { ...p };
+    this.form = {
+      ...p,
+      precio_num: p.precio_num ?? this.parsePrecioProducto(p.precio),
+      precio_mayorista: p.precio_mayorista ?? null,
+      min_mayorista: p.min_mayorista ?? 4,
+      precio_a_consultar: !!p.precio_a_consultar,
+    };
     this.error = '';
     this.success = '';
   }
@@ -965,9 +1008,22 @@ export class AdminStateService implements OnDestroy {
       return;
     }
     const categoria = this.form.categoria ?? 'cafe';
-    const data = {
+    const aConsultar = !!this.form.precio_a_consultar;
+    const precioNum = aConsultar ? null : this.toNullableNumber(this.form.precio_num);
+    const precioMayorista = this.toNullableNumber(this.form.precio_mayorista);
+    const minRaw = this.toNullableNumber(this.form.min_mayorista);
+    const minMayorista = minRaw != null && minRaw >= 1 ? Math.round(minRaw) : 4;
+    const data: Omit<Producto, 'id'> = {
       nombre: this.form.nombre.trim(),
-      precio: this.form.precio ?? '',
+      precio: syncPrecioDisplay({
+        precio_a_consultar: aConsultar,
+        precio_num: precioNum,
+        precio: this.form.precio,
+      }),
+      precio_num: precioNum,
+      precio_mayorista: precioMayorista,
+      min_mayorista: minMayorista,
+      precio_a_consultar: aConsultar,
       descripcion: this.form.descripcion ?? '',
       img: this.form.img ?? '',
       categoria,
@@ -1011,7 +1067,7 @@ export class AdminStateService implements OnDestroy {
   cerrarModal(): void {
     this.showModal = false;
     this.editingId = null;
-    this.form = { nombre: '', precio: '', descripcion: '', img: '', categoria: 'cafe' };
+    this.form = this.emptyProductoForm();
   }
 
   // --- Compras ---
@@ -1140,13 +1196,30 @@ export class AdminStateService implements OnDestroy {
     return parsePrecio(precio);
   }
 
+  unitarioProductoRapido(p: Producto | undefined, cantidad: number): number | null {
+    if (!p || p.precio_a_consultar) return null;
+    const qty = Math.max(1, Number(cantidad) || 1);
+    const minMayorista = p.min_mayorista ?? 4;
+    if (
+      p.precio_mayorista != null &&
+      Number.isFinite(Number(p.precio_mayorista)) &&
+      qty >= minMayorista
+    ) {
+      return Number(p.precio_mayorista);
+    }
+    if (p.precio_num != null && Number.isFinite(Number(p.precio_num))) {
+      return Number(p.precio_num);
+    }
+    return this.parsePrecioProducto(p.precio);
+  }
+
   estimadoMontoRapido(): number {
     return this.formRapidoVenta.items.reduce((sum, item) => {
       if (!item.productoId) return sum;
       const p = this.productos().find((x) => x.id === item.productoId);
-      const unit = this.parsePrecioProducto(p?.precio);
-      if (unit == null) return sum;
       const qty = Math.max(1, Number(item.cantidad) || 1);
+      const unit = this.unitarioProductoRapido(p, qty);
+      if (unit == null) return sum;
       return sum + unit * qty;
     }, 0);
   }

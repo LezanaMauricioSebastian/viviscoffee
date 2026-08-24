@@ -1,7 +1,12 @@
 import { Component, EventEmitter, Input, Output, ChangeDetectionStrategy } from '@angular/core';
 import { forkJoin } from 'rxjs';
 import { AuthService } from '../../core/services/auth.service';
-import { ProductosService, Producto } from '../../core/services/productos.service';
+import {
+  ProductosService,
+  Producto,
+  syncPrecioDisplay,
+  formatPrecioLabel,
+} from '../../core/services/productos.service';
 import { resolveImageUrl } from '../../shared/utils/resolve-image-url';
 
 @Component({
@@ -20,11 +25,22 @@ export class ProductosGenericoComponent {
   @Output() productosChange = new EventEmitter<void>();
 
   readonly resolveImageUrl = resolveImageUrl;
+  readonly formatPrecioLabel = formatPrecioLabel;
 
   categorias: string[] = [];
   showModal = false;
   editingId: string | null = null;
-  form: Partial<Producto> = { nombre: '', precio: '', descripcion: '', img: '', categoria: 'cafe' };
+  form: Partial<Producto> = {
+    nombre: '',
+    precio: '',
+    precio_num: null,
+    precio_mayorista: null,
+    min_mayorista: 4,
+    precio_a_consultar: false,
+    descripcion: '',
+    img: '',
+    categoria: 'cafe',
+  };
   subiendoImg = false;
   reordenandoProductoId: string | null = null;
   error = '';
@@ -37,16 +53,38 @@ export class ProductosGenericoComponent {
     this.categorias = prod.getCategorias();
   }
 
+  private emptyForm(categoria?: string): Partial<Producto> {
+    return {
+      nombre: '',
+      precio: '',
+      precio_num: null,
+      precio_mayorista: null,
+      min_mayorista: 4,
+      precio_a_consultar: false,
+      descripcion: '',
+      img: '',
+      categoria: categoria || this.categoria || 'cafe',
+    };
+  }
+
+  onPrecioEstructuradoChange(): void {
+    if (this.form.precio_a_consultar) {
+      this.form.precio = 'Consultar';
+      return;
+    }
+    this.form.precio = syncPrecioDisplay(this.form);
+  }
+
+  private toNullableNumber(value: unknown): number | null {
+    if (value == null || value === '') return null;
+    const n = Number(value);
+    return Number.isFinite(n) ? n : null;
+  }
+
   abrirNuevo(): void {
     this.showModal = true;
     this.editingId = null;
-    this.form = {
-      nombre: '',
-      precio: '',
-      descripcion: '',
-      img: '',
-      categoria: this.categoria || 'cafe',
-    };
+    this.form = this.emptyForm(this.categoria || 'cafe');
     this.error = '';
     this.success = '';
   }
@@ -54,7 +92,13 @@ export class ProductosGenericoComponent {
   abrirEditar(p: Producto): void {
     this.showModal = true;
     this.editingId = p.id ?? null;
-    this.form = { ...p };
+    this.form = {
+      ...p,
+      precio_num: p.precio_num ?? null,
+      precio_mayorista: p.precio_mayorista ?? null,
+      min_mayorista: p.min_mayorista ?? 4,
+      precio_a_consultar: !!p.precio_a_consultar,
+    };
     this.error = '';
     this.success = '';
   }
@@ -65,9 +109,19 @@ export class ProductosGenericoComponent {
       return;
     }
     const categoria = this.form.categoria ?? this.categoria ?? 'cafe';
+    const aConsultar = !!this.form.precio_a_consultar;
+    const precioNum = aConsultar ? null : this.toNullableNumber(this.form.precio_num);
     const data = {
       nombre: this.form.nombre.trim(),
-      precio: this.form.precio ?? '',
+      precio: syncPrecioDisplay({
+        precio_a_consultar: aConsultar,
+        precio_num: precioNum,
+        precio: this.form.precio,
+      }),
+      precio_num: precioNum,
+      precio_mayorista: this.toNullableNumber(this.form.precio_mayorista),
+      min_mayorista: this.toNullableNumber(this.form.min_mayorista) ?? 4,
+      precio_a_consultar: aConsultar,
       descripcion: this.form.descripcion ?? '',
       img: this.form.img ?? '',
       categoria,

@@ -114,7 +114,7 @@
             >
               <option value="">— Opcional —</option>
               @for (p of state.productosParaRapido(); track p.id) {
-                <option [value]="p.id">{{ p.nombre }} · ${{ p.precio }}</option>
+                <option [value]="p.id">{{ p.nombre }} · {{ state.formatPrecioLabel(p) }}</option>
               }
             </select>
           </div>

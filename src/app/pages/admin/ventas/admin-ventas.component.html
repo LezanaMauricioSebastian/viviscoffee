@@ -1,26 +1,26 @@
 <div class="mb-4 d-flex flex-wrap align-items-center gap-2">
 <button type="button" class="btn btn-primary" (click)="state.abrirNuevoVenta()">Nueva venta</button>
-<select class="form-select form-select-sm admin-filter-select" [(ngModel)]="state.periodo" (ngModelChange)="onPeriodoChange()">
+<select class="form-select form-select-sm admin-filter-select" [ngModel]="state.periodo()" (ngModelChange)="state.periodo.set($event); onPeriodoChange()">
   <option value="mensual">Mensual</option>
   <option value="semestral">Semestral</option>
   <option value="total">Total</option>
 </select>
-<button type="button" class="btn btn-outline-secondary btn-sm" (click)="state.exportarVentasCsv()" [disabled]="state.ventasVisibles.length === 0">
+<button type="button" class="btn btn-outline-secondary btn-sm" (click)="state.exportarVentasCsv()" [disabled]="state.ventasVisibles().length === 0">
   Exportar CSV
 </button>
     </div>
 
-    @if (!state.loadingVentas && state.ventasFiltradas.length > 0) {
+    @if (!state.loadingVentas && state.ventasFiltradas().length > 0) {
 <div class="admin-toolbar mb-3">
   <input
     type="search"
     class="form-control form-control-sm admin-search"
     placeholder="Buscar detalle, notas o monto..."
-    [value]="state.filtroVentaBusqueda"
-    (input)="state.filtroVentaBusqueda = $any($event.target).value"
+    [value]="state.filtroVentaBusqueda()"
+    (input)="state.filtroVentaBusqueda.set($any($event.target).value)"
   >
-  @if (state.filtroVentaBusqueda) {
-    <button type="button" class="btn btn-outline-light btn-sm" (click)="state.filtroVentaBusqueda = ''">
+  @if (state.filtroVentaBusqueda()) {
+    <button type="button" class="btn btn-outline-light btn-sm" (click)="state.filtroVentaBusqueda.set('')">
       Limpiar búsqueda
     </button>
   }
@@ -29,17 +29,17 @@
 
     @if (state.loadingVentas) {
 <p class="text-white-50">Cargando ventas...</p>
-    } @else if (state.ventas.length === 0) {
+    } @else if (state.ventas().length === 0) {
 <p class="text-white-50">No hay ventas registradas.</p>
-    } @else if (state.ventasFiltradas.length === 0) {
+    } @else if (state.ventasFiltradas().length === 0) {
 <p class="text-warning mb-2">No hay ventas en este período. Probá seleccionar "Total" para ver todo.</p>
-    } @else if (state.ventasVisibles.length === 0) {
+    } @else if (state.ventasVisibles().length === 0) {
 <p class="text-warning mb-2">Ninguna venta coincide con la búsqueda.</p>
     } @else {
 <p class="text-success mb-2">
-  <strong>Total período ({{ state.periodo }}): ${{ state.totalVentas() | number }}</strong>
-  @if (state.filtroVentaBusqueda) {
-    <span class="text-white-50"> — visibles: ${{ state.totalVentasVisibles() | number }} ({{ state.ventasVisibles.length }} registros)</span>
+  <strong>Total período ({{ state.periodo() }}): ${{ state.totalVentas() | number }}</strong>
+  @if (state.filtroVentaBusqueda()) {
+    <span class="text-white-50"> — visibles: ${{ state.totalVentasVisibles() | number }} ({{ state.ventasVisibles().length }} registros)</span>
   }
 </p>
 <div class="table-responsive">
@@ -53,7 +53,7 @@
       </tr>
     </thead>
     <tbody>
-      @for (v of state.ventasVisibles; track v.id) {
+      @for (v of state.ventasVisibles(); track v.id) {
         <tr>
           <td>{{ state.normalizarFecha(v.fecha) || v.fecha }}</td>
           <td>${{ v.monto }}</td>

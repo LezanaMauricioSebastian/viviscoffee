@@ -100,7 +100,7 @@
               <p class="card-text">{{ item.descripcion }}</p>
             </div>
             <div class="card-footer text-white">
-              <p class="text-white mb-0">${{ item.precio }}</p>
+              <p class="text-white mb-0">{{ formatPrecioLabel(item) }}</p>
             </div>
           </div>
         </div>
@@ -123,8 +123,57 @@
             <input type="text" class="form-control" [(ngModel)]="form.nombre" />
           </div>
           <div class="mb-3">
-            <label class="form-label">Precio</label>
-            <input type="text" class="form-control" [(ngModel)]="form.precio" placeholder="ej. 1500" />
+            <div class="form-check mb-2">
+              <input
+                class="form-check-input"
+                type="checkbox"
+                id="precioAConsultarPublic"
+                [(ngModel)]="form.precio_a_consultar"
+                (ngModelChange)="onPrecioEstructuradoChange()"
+                name="precioAConsultarPublic"
+              />
+              <label class="form-check-label" for="precioAConsultarPublic">Precio a consultar</label>
+            </div>
+            <div class="row g-2">
+              <div class="col-md-4">
+                <label class="form-label">Precio</label>
+                <input
+                  type="number"
+                  class="form-control"
+                  [(ngModel)]="form.precio_num"
+                  (ngModelChange)="onPrecioEstructuradoChange()"
+                  placeholder="ej. 1500"
+                  min="0"
+                  step="1"
+                  [disabled]="!!form.precio_a_consultar"
+                  name="precioNumPublic"
+                />
+              </div>
+              <div class="col-md-4">
+                <label class="form-label">Precio mayorista</label>
+                <input
+                  type="number"
+                  class="form-control"
+                  [(ngModel)]="form.precio_mayorista"
+                  placeholder="Opcional"
+                  min="0"
+                  step="1"
+                  name="precioMayoristaPublic"
+                />
+              </div>
+              <div class="col-md-4">
+                <label class="form-label">Mín. mayorista</label>
+                <input
+                  type="number"
+                  class="form-control"
+                  [(ngModel)]="form.min_mayorista"
+                  placeholder="4"
+                  min="1"
+                  step="1"
+                  name="minMayoristaPublic"
+                />
+              </div>
+            </div>
           </div>
           <div class="mb-3">
             <label class="form-label">Descripción</label>

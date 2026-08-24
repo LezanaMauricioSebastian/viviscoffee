@@ -10,11 +10,40 @@ const BUCKET = 'productos';
 export interface Producto {
   id?: string;
   nombre: string;
+  /** Display legacy (sincronizado desde precio_num / a consultar). */
   precio: string;
+  precio_num?: number | null;
+  precio_mayorista?: number | null;
+  min_mayorista?: number | null;
+  precio_a_consultar?: boolean;
   descripcion: string;
   img: string;
   categoria: string;
   orden?: number;
+}
+
+/** Texto legacy `precio` a partir de los campos estructurados. */
+export function syncPrecioDisplay(p: {
+  precio_a_consultar?: boolean | null;
+  precio_num?: number | null;
+  precio?: string | null;
+}): string {
+  if (p.precio_a_consultar) return 'Consultar';
+  if (p.precio_num != null && Number.isFinite(Number(p.precio_num))) {
+    return String(Math.round(Number(p.precio_num)));
+  }
+  return p.precio ?? '';
+}
+
+/** Etiqueta de precio para UI pública/admin. */
+export function formatPrecioLabel(p: Producto): string {
+  if (p.precio_a_consultar) return 'Consultar';
+  if (p.precio_num != null && Number.isFinite(Number(p.precio_num))) {
+    return `$${Math.round(Number(p.precio_num))}`;
+  }
+  const legacy = (p.precio ?? '').trim();
+  if (!legacy) return 'Consultar';
+  return legacy.startsWith('$') ? legacy : `$${legacy}`;
 }
 
 const CATEGORIAS = ['promo', 'cafe', 'chocolates', 'box', 'cookies', 'salado', 'vegan', 'otros'] as const;

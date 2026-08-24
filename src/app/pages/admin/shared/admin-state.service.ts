@@ -1,17 +1,14 @@
-import { Component, OnInit, OnDestroy, ViewChild, ElementRef, ChangeDetectionStrategy } from '@angular/core';
-import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
-import { RouterModule } from '@angular/router';
+import { Injectable, OnDestroy } from '@angular/core';
 import { forkJoin } from 'rxjs';
 import * as Papa from 'papaparse';
-import { ProductosService, Producto } from '../../core/services/productos.service';
-import { ComprasService, CompraInsumo } from '../../core/services/compras.service';
-import { VentasService, Venta } from '../../core/services/ventas.service';
+import { ProductosService, Producto } from '../../../core/services/productos.service';
+import { ComprasService, CompraInsumo } from '../../../core/services/compras.service';
+import { VentasService, Venta } from '../../../core/services/ventas.service';
 import {
   AdminConfigService,
   AdminConfig,
   DEFAULT_ADMIN_CONFIG,
-} from '../../core/services/admin-config.service';
+} from '../../../core/services/admin-config.service';
 import {
   Chart,
   CategoryScale,
@@ -41,7 +38,6 @@ Chart.register(
   Legend
 );
 
-type Tab = 'resumen' | 'productos' | 'compras' | 'ventas';
 type Periodo = 'mensual' | 'semestral' | 'total';
 type DashboardActivity = {
   id: string;
@@ -56,15 +52,8 @@ type QuickVentaItem = {
   cantidad: number;
 };
 
-@Component({
-    selector: 'app-admin',
-    imports: [CommonModule, FormsModule, RouterModule],
-    templateUrl: './admin.component.html',
-    changeDetection: ChangeDetectionStrategy.Eager,
-    styleUrl: './admin.component.css'
-})
-export class AdminComponent implements OnInit, OnDestroy {
-  tab: Tab = 'resumen';
+@Injectable()
+export class AdminStateService implements OnDestroy {
   periodo: Periodo = 'total';
   periodoTendencia: '7d' | '30d' | '6m' = '30d';
   readonly periodoTendenciaOptions: { value: '7d' | '30d' | '6m'; label: string }[] = [
@@ -73,9 +62,6 @@ export class AdminComponent implements OnInit, OnDestroy {
     { value: '6m', label: 'Últimos 6 meses' },
   ];
 
-  @ViewChild('chartCanvas') chartCanvas?: ElementRef<HTMLCanvasElement>;
-  @ViewChild('recoveryChartCanvas') recoveryChartCanvas?: ElementRef<HTMLCanvasElement>;
-  @ViewChild('tendenciaChartCanvas') tendenciaChartCanvas?: ElementRef<HTMLCanvasElement>;
   private chart: Chart<'bar'> | null = null;
   private recoveryChart: Chart<'line'> | null = null;
   private tendenciaChart: Chart<'line'> | null = null;
@@ -166,32 +152,16 @@ export class AdminComponent implements OnInit, OnDestroy {
     this.categorias = prod.getCategorias();
   }
 
-  ngOnInit(): void {
+  initialize(): void {
     this.cargarConfig();
     this.cargar();
     this.cargarCompras();
     this.cargarVentas();
   }
 
-  setTab(t: Tab): void {
-    this.tab = t;
+  clearAlerts(): void {
     this.error = '';
     this.success = '';
-    if (t === 'resumen') {
-      this.cargarCompras();
-      this.cargarVentas();
-      this.renderTendenciaDelayed();
-    }
-    if (t === 'compras') {
-      this.cargarCompras();
-      this.cargarVentas();
-      this.renderChartDelayed();
-    }
-    if (t === 'ventas') {
-      this.cargarVentas();
-      this.cargarCompras();
-      this.renderChartDelayed();
-    }
   }
 
   getRangoMensual(): { inicio: string; fin: string } {
@@ -393,9 +363,6 @@ export class AdminComponent implements OnInit, OnDestroy {
         gastos_fijos_mensuales: config.gastos_fijos_mensuales,
       };
       this.loadingConfig = false;
-      if (this.tab === 'resumen' && !this.loadingCompras && !this.loadingVentas) {
-        this.renderTendenciaDelayed();
-      }
     });
   }
 
@@ -436,8 +403,6 @@ export class AdminComponent implements OnInit, OnDestroy {
     this.comprasSvc.getAll().subscribe((data) => {
       this.compras = data;
       this.loadingCompras = false;
-      this.renderChartDelayed();
-      if (this.tab === 'resumen' && !this.loadingVentas) this.renderTendenciaDelayed();
     });
   }
 
@@ -446,35 +411,36 @@ export class AdminComponent implements OnInit, OnDestroy {
     this.ventasSvc.getAll().subscribe((data) => {
       this.ventas = data;
       this.loadingVentas = false;
-      this.renderChartDelayed();
-      if (this.tab === 'resumen' && !this.loadingCompras) this.renderTendenciaDelayed();
     });
   }
 
-  renderChartDelayed(): void {
+  renderChartDelayed(getCanvas: () => HTMLCanvasElement | null | undefined, getRecoveryCanvas: () => HTMLCanvasElement | null | undefined): void {
     if (this.chartRenderTimeout) clearTimeout(this.chartRenderTimeout);
     this.chartRenderTimeout = setTimeout(() => {
       this.chartRenderTimeout = null;
-      this.renderChart();
-      // El canvas de recuperación está en @if; dar otro tick para que Angular lo renderice
-      setTimeout(() => this.renderRecoveryChart(), 100);
+      this.renderChart(getCanvas());
+      setTimeout(() => this.renderRecoveryChart(getRecoveryCanvas()), 100);
     }, 150);
   }
 
-  onPeriodoChange(): void {
-    this.renderChartDelayed();
-  }
-
-  setPeriodoTendencia(value: string): void {
+  setPeriodoTendencia(
+    value: string,
+    getCanvas: () => HTMLCanvasElement | null | undefined
+  ): void {
     if (value === '7d' || value === '30d' || value === '6m') {
       this.periodoTendencia = value;
-      this.renderTendenciaDelayed();
+      this.renderTendenciaDelayed(getCanvas);
     }
   }
 
-  renderChart(): void {
-    if (this.tab !== 'compras' && this.tab !== 'ventas') return;
-    const canvas = this.chartCanvas?.nativeElement;
+  onPeriodoChange(
+    getCanvas: () => HTMLCanvasElement | null | undefined,
+    getRecoveryCanvas: () => HTMLCanvasElement | null | undefined
+  ): void {
+    this.renderChartDelayed(getCanvas, getRecoveryCanvas);
+  }
+
+  renderChart(canvas?: HTMLCanvasElement | null): void {
     if (!canvas) return;
 
     const totalV = this.totalVentas();
@@ -538,9 +504,7 @@ export class AdminComponent implements OnInit, OnDestroy {
   }
 
   /** Gráfico: gastos constantes (inversión), ventas acumuladas, proyección punteada de recuperación */
-  renderRecoveryChart(): void {
-    if (this.tab !== 'compras' && this.tab !== 'ventas') return;
-    const canvas = this.recoveryChartCanvas?.nativeElement;
+  renderRecoveryChart(canvas?: HTMLCanvasElement | null): void {
     if (!canvas) return;
 
     const inv = this.inversionInsumosEsteMes();
@@ -1333,13 +1297,11 @@ export class AdminComponent implements OnInit, OnDestroy {
     return { labels, data };
   }
 
-  renderTendenciaDelayed(): void {
-    setTimeout(() => this.renderTendenciaChart(), 150);
+  renderTendenciaDelayed(getCanvas: () => HTMLCanvasElement | null | undefined): void {
+    setTimeout(() => this.renderTendenciaChart(getCanvas()), 150);
   }
 
-  renderTendenciaChart(): void {
-    if (this.tab !== 'resumen') return;
-    const canvas = this.tendenciaChartCanvas?.nativeElement;
+  renderTendenciaChart(canvas?: HTMLCanvasElement | null): void {
     if (!canvas) return;
 
     const { labels, data } = this.datosTendenciaVentas();

@@ -1,0 +1,129 @@
+<div class="mb-4 d-flex flex-wrap align-items-center gap-2">
+<button type="button" class="btn btn-primary" (click)="state.abrirNuevoCompra()">Nueva compra</button>
+<select class="form-select form-select-sm admin-filter-select" [(ngModel)]="state.periodo" (ngModelChange)="onPeriodoChange()">
+  <option value="mensual">Mensual</option>
+  <option value="semestral">Semestral</option>
+  <option value="total">Total</option>
+</select>
+<button type="button" class="btn btn-outline-secondary btn-sm" (click)="state.exportarComprasCsv()" [disabled]="state.comprasVisibles.length === 0">
+  Exportar CSV
+</button>
+    </div>
+
+    @if (!state.loadingCompras && state.comprasFiltradas.length > 0) {
+<div class="admin-toolbar mb-3">
+  <input
+    type="search"
+    class="form-control form-control-sm admin-search"
+    placeholder="Buscar concepto, proveedor o notas..."
+    [value]="state.filtroCompraBusqueda"
+    (input)="state.filtroCompraBusqueda = $any($event.target).value"
+  >
+  @if (state.filtroCompraBusqueda) {
+    <button type="button" class="btn btn-outline-light btn-sm" (click)="state.filtroCompraBusqueda = ''">
+      Limpiar búsqueda
+    </button>
+  }
+</div>
+    }
+
+    @if (state.loadingCompras) {
+<p class="text-white-50">Cargando compras...</p>
+    } @else if (state.compras.length === 0) {
+<p class="text-white-50">No hay compras registradas.</p>
+    } @else if (state.comprasFiltradas.length === 0) {
+<p class="text-warning mb-2">No hay compras en este período. Probá seleccionar "Total" para ver todo.</p>
+    } @else if (state.comprasVisibles.length === 0) {
+<p class="text-warning mb-2">Ninguna compra coincide con la búsqueda.</p>
+    } @else {
+<p class="text-success mb-2">
+  <strong>Total período ({{ state.periodo }}): ${{ state.totalCompras() | number }}</strong>
+  @if (state.filtroCompraBusqueda) {
+    <span class="text-white-50"> — visibles: ${{ state.totalComprasVisibles() | number }} ({{ state.comprasVisibles.length }} registros)</span>
+  }
+</p>
+<div class="table-responsive">
+  <table class="table table-dark table-striped">
+    <thead>
+      <tr>
+        <th>Fecha</th>
+        <th>Concepto</th>
+        <th>Proveedor</th>
+        <th>Cantidad</th>
+        <th>Monto</th>
+        <th>Acciones</th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (c of state.comprasVisibles; track c.id) {
+        <tr>
+          <td>{{ state.normalizarFecha(c.fecha) || c.fecha }}</td>
+          <td>{{ c.concepto }}</td>
+          <td>{{ c.proveedor || '—' }}</td>
+          <td>{{ c.cantidad }} {{ c.unidad }}</td>
+          <td>${{ c.monto }}</td>
+          <td>
+            <button type="button" class="btn btn-sm btn-outline-light me-1" (click)="state.abrirEditarCompra(c)">Editar</button>
+            <button type="button" class="btn btn-sm btn-outline-danger" (click)="state.eliminarCompra(c)">Eliminar</button>
+          </td>
+        </tr>
+      }
+    </tbody>
+  </table>
+</div>
+}
+
+@if (state.showModalCompra) {
+  <div class="modal d-block bg-dark bg-opacity-50" tabindex="-1" (click)="state.cerrarModalCompra()">
+    <div class="modal-dialog modal-dialog-centered" (click)="$event.stopPropagation()">
+<div class="modal-content bg-dark text-white">
+  <div class="modal-header">
+    <h5 class="modal-title">{{ state.editingCompraId ? 'Editar compra' : 'Nueva compra de insumo' }}</h5>
+    <button type="button" class="btn-close btn-close-white" (click)="state.cerrarModalCompra()"></button>
+  </div>
+  <div class="modal-body">
+    <div class="mb-3">
+      <label class="form-label">Fecha</label>
+      <input type="date" class="form-control" [(ngModel)]="state.formCompra.fecha" />
+    </div>
+    <div class="mb-3">
+      <label class="form-label">Concepto *</label>
+      <input type="text" class="form-control" [(ngModel)]="state.formCompra.concepto" placeholder="ej. Harina 000, Café" />
+    </div>
+    <div class="row">
+      <div class="col-6">
+        <div class="mb-3">
+          <label class="form-label">Cantidad</label>
+          <input type="text" class="form-control" [(ngModel)]="state.formCompra.cantidad" placeholder="ej. 5" />
+        </div>
+      </div>
+      <div class="col-6">
+        <div class="mb-3">
+          <label class="form-label">Unidad</label>
+          <input type="text" class="form-control" [(ngModel)]="state.formCompra.unidad" placeholder="kg, litros, u" />
+        </div>
+      </div>
+    </div>
+    <div class="mb-3">
+      <label class="form-label">Monto ($) *</label>
+      <input type="number" class="form-control" [(ngModel)]="state.formCompra.monto" placeholder="0" min="0" step="0.01" />
+    </div>
+    <div class="mb-3">
+      <label class="form-label">Proveedor</label>
+      <input type="text" class="form-control" [(ngModel)]="state.formCompra.proveedor" placeholder="Opcional" />
+    </div>
+    <div class="mb-3">
+      <label class="form-label">Notas</label>
+      <textarea class="form-control" rows="2" [(ngModel)]="state.formCompra.notas"></textarea>
+    </div>
+  </div>
+  <div class="modal-footer">
+    <button type="button" class="btn btn-secondary" (click)="state.cerrarModalCompra()">Cancelar</button>
+    <button type="button" class="btn btn-primary" (click)="state.guardarCompra()">Guardar</button>
+  </div>
+</div>
+    </div>
+  </div>
+}
+
+<app-admin-finanzas-charts />

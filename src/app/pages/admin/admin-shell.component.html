@@ -1,0 +1,31 @@
+<div class="container py-4 text-white">
+  <h1 class="mb-4">Panel de administración</h1>
+
+  @if (state.error) {
+    <div class="alert alert-danger">{{ state.error }}</div>
+  }
+  @if (state.success) {
+    <div class="alert alert-success">{{ state.success }}</div>
+  }
+
+  <ul class="nav nav-tabs mb-4">
+    <li class="nav-item">
+      <a class="nav-link" routerLink="/admin/resumen" routerLinkActive="active">Resumen</a>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link" routerLink="/admin/productos" routerLinkActive="active">Productos</a>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link" routerLink="/admin/compras" routerLinkActive="active">Compras de insumos</a>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link" routerLink="/admin/ventas" routerLinkActive="active">Ventas</a>
+    </li>
+  </ul>
+
+  <div class="mb-3">
+    <a routerLink="/" class="btn btn-outline-light btn-sm">Volver al inicio</a>
+  </div>
+
+  <router-outlet />
+</div>

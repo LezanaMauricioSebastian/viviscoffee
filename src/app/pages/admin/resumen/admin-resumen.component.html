@@ -1,0 +1,302 @@
+@if (state.loadingCompras || state.loadingVentas || state.loadingConfig) {
+<p class="resumen-texto-gris">Cargando resumen...</p>
+    } @else {
+<div class="dashboard-grid mb-4">
+  <div class="card resumen-card dashboard-kpi">
+    <div class="card-body">
+      <span class="dashboard-label">Ventas del mes</span>
+      <strong class="dashboard-value">${{ state.ventasEsteMes() | number }}</strong>
+      @if (state.variacionPorcentualVentas() !== null) {
+        <small [class.text-success]="state.variacionPorcentualVentas()! >= 0" [class.text-danger]="state.variacionPorcentualVentas()! < 0">
+          {{ state.variacionPorcentualVentas()! >= 0 ? '+' : '' }}{{ state.variacionPorcentualVentas()! | number:'1.0-1' }}% vs mes anterior
+        </small>
+      } @else {
+        <small class="resumen-texto-gris">Sin datos del mes anterior</small>
+      }
+    </div>
+  </div>
+
+  <div class="card resumen-card dashboard-kpi">
+    <div class="card-body">
+      <span class="dashboard-label">Insumos del mes</span>
+      <strong class="dashboard-value">${{ state.inversionInsumosEsteMes() | number }}</strong>
+      @if (state.variacionPorcentualCompras() !== null) {
+        <small [class.text-success]="state.variacionPorcentualCompras()! <= 0" [class.text-danger]="state.variacionPorcentualCompras()! > 0">
+          {{ state.variacionPorcentualCompras()! >= 0 ? '+' : '' }}{{ state.variacionPorcentualCompras()! | number:'1.0-1' }}% vs mes anterior
+        </small>
+      } @else {
+        <small class="resumen-texto-gris">Sin datos del mes anterior</small>
+      }
+    </div>
+  </div>
+
+  <div class="card resumen-card dashboard-kpi">
+    <div class="card-body">
+      <span class="dashboard-label">Caja neta estimada</span>
+      <strong class="dashboard-value" [class.flujo-positivo]="state.flujoCajaNetoEsteMes() >= 0" [class.flujo-negativo]="state.flujoCajaNetoEsteMes() < 0">
+        ${{ state.flujoCajaNetoEsteMes() | number }}
+      </strong>
+      <small class="resumen-texto-gris">Ventas - insumos - gastos fijos</small>
+    </div>
+  </div>
+
+  <div class="card resumen-card dashboard-kpi">
+    <div class="card-body">
+      <span class="dashboard-label">Proyección fin de mes</span>
+      <strong class="dashboard-value">${{ state.proyeccionVentasFinMes() | number:'1.0-0' }}</strong>
+      <small class="resumen-texto-gris">Promedio diario: ${{ state.promedioVentaDiaria() | number:'1.0-0' }}</small>
+    </div>
+  </div>
+</div>
+
+<div class="card resumen-card mb-4">
+  <div class="card-body">
+    <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
+      <div>
+        <h6 class="card-title text-info mb-1">Carga rápida del mes</h6>
+        <p class="resumen-texto-gris mb-0">Anotá una venta con monto y hasta 2 productos. Ideal para ir cargando el mes sin abrir Ventas.</p>
+      </div>
+      @if (state.estimadoMontoRapido() > 0) {
+        <small class="resumen-texto-gris">Estimado catálogo: ${{ state.estimadoMontoRapido() | number }}</small>
+      }
+    </div>
+
+    <div class="row g-2 align-items-end">
+      <div class="col-6 col-md-3 col-lg-2">
+        <label class="form-label small text-white-50">Fecha</label>
+        <input type="date" class="form-control form-control-sm" [(ngModel)]="state.formRapidoVenta.fecha" name="rapidoFecha" />
+      </div>
+      <div class="col-6 col-md-3 col-lg-2">
+        <label class="form-label small text-white-50">Monto ($)</label>
+        <input
+          type="number"
+          class="form-control form-control-sm"
+          min="0"
+          step="100"
+          [(ngModel)]="state.formRapidoVenta.monto"
+          (input)="state.onMontoRapidoManual()"
+          name="rapidoMonto"
+          placeholder="0"
+        />
+      </div>
+      <div class="col-12 col-md-6 col-lg-3">
+        <label class="form-label small text-white-50">Nota / cliente (opcional)</label>
+        <input
+          type="text"
+          class="form-control form-control-sm"
+          [(ngModel)]="state.formRapidoVenta.notas"
+          name="rapidoNotas"
+          placeholder="ej. tía Andrea, Sincer"
+        />
+      </div>
+      <div class="col-12 col-lg-5 d-flex flex-wrap gap-2 justify-content-lg-end">
+        <button
+          type="button"
+          class="btn btn-success btn-sm"
+          (click)="state.guardarVentaRapida()"
+          [disabled]="state.savingRapido"
+        >
+          {{ state.savingRapido ? 'Guardando...' : 'Registrar venta' }}
+        </button>
+      </div>
+    </div>
+
+    <div class="rapido-items mt-3">
+      @for (item of state.formRapidoVenta.items; track item; let i = $index) {
+        <div class="row g-2 align-items-end mb-2">
+          <div class="col-8 col-md-9">
+            <label class="form-label small text-white-50">Producto {{ i + 1 }}</label>
+            <select
+              class="form-select form-select-sm"
+              [(ngModel)]="item.productoId"
+              (ngModelChange)="state.onItemRapidoChange()"
+              [name]="'rapidoProd' + i"
+            >
+              <option value="">— Opcional —</option>
+              @for (p of state.productosParaRapido(); track p.id) {
+                <option [value]="p.id">{{ p.nombre }} · {{ state.formatPrecioLabel(p) }}</option>
+              }
+            </select>
+          </div>
+          <div class="col-4 col-md-3">
+            <label class="form-label small text-white-50">Cant.</label>
+            <input
+              type="number"
+              class="form-control form-control-sm"
+              min="1"
+              step="1"
+              [(ngModel)]="item.cantidad"
+              (ngModelChange)="state.onItemRapidoChange()"
+              [name]="'rapidoQty' + i"
+            />
+          </div>
+        </div>
+      }
+    </div>
+
+    @if (state.armarDetalleRapido()) {
+      <p class="resumen-texto-gris small mb-0 mt-1">Detalle: {{ state.armarDetalleRapido() }}</p>
+    }
+  </div>
+</div>
+
+<div class="card resumen-card mb-4">
+  <div class="card-body">
+    <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
+      <div>
+        <h6 class="card-title text-info mb-1">Lo más vendido este mes</h6>
+        <p class="resumen-texto-gris mb-0">Top 5 según el detalle de las ventas del mes.</p>
+      </div>
+      <small class="resumen-texto-gris text-capitalize">{{ state.nombreMesActual() }}</small>
+    </div>
+
+    @if (state.topProductosDelMes().length > 0) {
+      <div class="top-producto-ranking">
+        @for (item of state.topProductosDelMes(); track item.nombre; let i = $index) {
+          <div class="top-producto-row" [class.top-producto-row--first]="i === 0">
+            @if (item.img) {
+              <img [src]="item.img" [alt]="item.nombre" class="top-producto-img" />
+            } @else {
+              <div class="top-producto-img top-producto-img--placeholder" aria-hidden="true"></div>
+            }
+            <div class="flex-grow-1">
+              <p class="mb-0">
+                <span class="resumen-texto-gris me-1">{{ i + 1 }}.</span>
+                <strong class="text-white">{{ item.nombre }}</strong>
+              </p>
+              <small class="resumen-texto-gris">
+                <span class="text-success">{{ item.unidades }} {{ item.unidades === 1 ? 'unidad' : 'unidades' }}</span>
+                · {{ item.menciones }} {{ item.menciones === 1 ? 'venta' : 'ventas' }}
+                @if (item.categoria) {
+                  · <span class="text-capitalize">{{ item.categoria }}</span>
+                }
+              </small>
+            </div>
+          </div>
+        }
+      </div>
+    } @else {
+      <p class="resumen-texto-gris mb-0">
+        Todavía no hay productos reconocibles en el detalle de ventas de este mes.
+      </p>
+    }
+  </div>
+</div>
+
+<div class="row g-3 mb-4">
+  <div class="col-lg-7">
+    <div class="card resumen-card h-100">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-start gap-3 mb-3">
+          <div>
+            <h6 class="card-title text-info mb-1">Meta mensual</h6>
+            <p class="resumen-texto-gris mb-0">Seguimiento de ventas contra objetivo.</p>
+          </div>
+          <strong class="text-white">${{ state.metaVentasMensual() | number }}</strong>
+        </div>
+        @if (state.metaVentasMensual() > 0) {
+          <div class="progress dashboard-progress mb-2">
+            <div class="progress-bar" [style.width.%]="state.progresoMetaVentas()">{{ state.progresoMetaVentas() | number:'1.0-0' }}%</div>
+          </div>
+          <p class="mb-2">
+            Faltan <strong>${{ state.montoFaltanteMeta() | number }}</strong> para llegar a la meta.
+          </p>
+          <p class="mb-0" [class.text-success]="state.proyeccionCumpleMeta()" [class.text-warning]="!state.proyeccionCumpleMeta()">
+            La proyección {{ state.proyeccionCumpleMeta() ? 'alcanza' : 'no alcanza' }} la meta con el ritmo actual.
+          </p>
+        } @else {
+          <p class="resumen-texto-gris mb-0">Definí una meta mensual para ver avance y alertas de proyección.</p>
+        }
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-5">
+    <div class="card resumen-card h-100">
+      <div class="card-body">
+        <h6 class="card-title text-info mb-3">Configuración rápida</h6>
+        <div class="row g-2">
+          <div class="col-sm-6 col-lg-12 col-xl-6">
+            <label class="form-label small text-white-50">Meta ventas mensual ($)</label>
+            <input type="number" class="form-control form-control-sm" min="0" [value]="state.dashboardConfigForm.meta_ventas_mensual" (input)="state.dashboardConfigForm.meta_ventas_mensual = $any($event.target).valueAsNumber || 0">
+          </div>
+          <div class="col-sm-6 col-lg-12 col-xl-6">
+            <label class="form-label small text-white-50">Gastos fijos mensuales ($)</label>
+            <input type="number" class="form-control form-control-sm" min="0" [value]="state.dashboardConfigForm.gastos_fijos_mensuales" (input)="state.dashboardConfigForm.gastos_fijos_mensuales = $any($event.target).valueAsNumber || 0">
+          </div>
+        </div>
+        <button type="button" class="btn btn-primary btn-sm mt-3" (click)="state.guardarConfig()" [disabled]="state.savingConfig">
+          {{ state.savingConfig ? 'Guardando...' : 'Guardar configuración' }}
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-3 mb-4">
+  <div class="col-lg-8">
+    <div class="card resumen-card h-100">
+      <div class="card-body">
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+          <h6 class="card-title text-info mb-0">Tendencia de ventas</h6>
+          <select class="form-select form-select-sm dashboard-select" [value]="state.periodoTendencia" (change)="onPeriodoTendenciaChange($any($event.target).value)">
+            @for (opt of state.periodoTendenciaOptions; track opt.value) {
+              <option [value]="opt.value">{{ opt.label }}</option>
+            }
+          </select>
+        </div>
+        @if (state.hayDatosTendencia()) {
+          <div class="tendencia-chart-container">
+            <canvas #tendenciaChartCanvas></canvas>
+          </div>
+        } @else {
+          <p class="resumen-texto-gris mb-0">No hay datos de ventas en este período.</p>
+        }
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-4">
+    <div class="card resumen-card h-100">
+      <div class="card-body">
+        <h6 class="card-title text-info mb-3">Actividad reciente</h6>
+        @if (state.actividadReciente().length > 0) {
+          <div class="activity-list">
+            @for (item of state.actividadReciente(); track item.id) {
+              <div class="activity-item">
+                <div>
+                  <span class="badge" [class.text-bg-success]="item.tipo === 'venta'" [class.text-bg-danger]="item.tipo === 'compra'">
+                    {{ item.tipo === 'venta' ? 'Venta' : 'Compra' }}
+                  </span>
+                  <strong class="d-block mt-1">{{ item.titulo }}</strong>
+                  <small class="resumen-texto-gris">{{ state.formatearFechaCorta(item.fecha) }} - {{ item.detalle }}</small>
+                </div>
+                <strong [class.text-success]="item.tipo === 'venta'" [class.text-danger]="item.tipo === 'compra'">
+                  ${{ item.monto | number }}
+                </strong>
+              </div>
+            }
+          </div>
+        } @else {
+          <p class="resumen-texto-gris mb-0">Todavía no hay ventas ni compras registradas.</p>
+        }
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card resumen-card mb-3">
+  <div class="card-body">
+    <h6 class="card-title text-info mb-2">Lecturas rápidas</h6>
+    <div class="dashboard-insights">
+      <p class="mb-0">Flujo bruto: <strong>${{ state.flujoCajaEsteMes() | number }}</strong></p>
+      <p class="mb-0">Gastos fijos: <strong>${{ state.gastosFijosMensuales() | number }}</strong></p>
+      @if (state.mejorDiaVentas(); as mejorDia) {
+        <p class="mb-0">Mejor día del mes: <strong>{{ state.formatearFechaCorta(mejorDia.fecha) }} (${{ mejorDia.total | number }})</strong></p>
+      } @else {
+        <p class="mb-0 resumen-texto-gris">Aún no hay ventas este mes para detectar el mejor día.</p>
+      }
+    </div>
+  </div>
+</div>
+    }

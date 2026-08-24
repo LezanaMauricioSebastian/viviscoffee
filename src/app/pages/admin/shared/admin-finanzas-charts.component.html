@@ -1,0 +1,66 @@
+@if (!state.loadingCompras && !state.loadingVentas) {
+  <div class="card bg-dark border-secondary mt-4">
+    <div class="card-body">
+      <h6 class="card-title text-info mb-3">Ventas vs Compras</h6>
+      <div class="ventas-compras-chart-container">
+        <canvas #chartCanvas></canvas>
+      </div>
+    </div>
+  </div>
+}
+<div class="card bg-dark border-secondary mt-4">
+  <div class="card-body">
+    <h6 class="card-title text-info mb-3">Recuperación de inversión en insumos</h6>
+    @if (state.inversionInsumosEsteMes() > 0) {
+      <div class="recovery-axes-row mb-2">
+        <div class="recovery-axis-item">
+          <label class="text-white-50 small">Eje Y:</label>
+          <select class="form-select form-select-sm recovery-axis-select" [(ngModel)]="state.recoveryChartScale" (ngModelChange)="refreshCharts()">
+            @for (opt of state.recoveryScaleOptions; track opt.value) {
+              <option [value]="opt.value">{{ opt.label }}</option>
+            }
+          </select>
+        </div>
+        <div class="recovery-axis-item">
+          <label class="text-white-50 small">Eje X:</label>
+          <select class="form-select form-select-sm recovery-axis-select" [(ngModel)]="state.recoveryChartAxisX" (ngModelChange)="refreshCharts()">
+            @for (opt of state.recoveryAxisXOptions; track opt.value) {
+              <option [value]="opt.value">{{ opt.label }}</option>
+            }
+          </select>
+        </div>
+      </div>
+      <div class="recovery-chart-container">
+        <canvas #recoveryChartCanvas></canvas>
+      </div>
+    }
+    <p class="text-white-50 small mb-2">
+      Inversión en insumos este mes: <strong class="text-white">${{ state.inversionInsumosEsteMes() | number }}</strong> &nbsp;|&nbsp;
+      Ventas este mes: <strong class="text-white">${{ state.ventasEsteMes() | number }}</strong>
+    </p>
+    @switch (state.tipoMensajeRecuperacion()) {
+      @case ('ok') {
+        @if (state.fechaEstimadaRecuperacion()) {
+          <p class="mb-2 text-info">
+            <strong>Según la proyección, llegarías a recuperar la inversión en insumos aproximadamente el {{ state.fechaEstimadaRecuperacion() }}</strong>
+            <span class="text-white-50">(en {{ state.diasParaRecuperarMensual() }} días)</span>
+          </p>
+        }
+      }
+      @case ('sin-ventas') {
+        <p class="text-warning mb-2">
+          No hay ventas este mes. Con ventas registradas, acá se mostraría en cuántos días se recuperaría la inversión de insumos.
+        </p>
+      }
+      @case ('sin-inversion') {
+        <p class="text-white-50 mb-2">
+          No hay compras de insumos este mes. Registrá compras para ver la estimación de recuperación.
+        </p>
+      }
+      @default {
+        <p class="text-white-50 mb-2">Sin datos suficientes para calcular.</p>
+      }
+    }
+    <small class="text-white-50 d-block mt-2">Basado en ventas brutas, sin márgenes.</small>
+  </div>
+</div>

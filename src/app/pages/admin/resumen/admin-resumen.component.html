@@ -113,7 +113,7 @@
               [name]="'rapidoProd' + i"
             >
               <option value="">— Opcional —</option>
-              @for (p of state.productosParaRapido; track p.id) {
+              @for (p of state.productosParaRapido(); track p.id) {
                 <option [value]="p.id">{{ p.nombre }} · ${{ p.precio }}</option>
               }
             </select>
@@ -136,6 +136,49 @@
 
     @if (state.armarDetalleRapido()) {
       <p class="resumen-texto-gris small mb-0 mt-1">Detalle: {{ state.armarDetalleRapido() }}</p>
+    }
+  </div>
+</div>
+
+<div class="card resumen-card mb-4">
+  <div class="card-body">
+    <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
+      <div>
+        <h6 class="card-title text-info mb-1">Lo más vendido este mes</h6>
+        <p class="resumen-texto-gris mb-0">Top 5 según el detalle de las ventas del mes.</p>
+      </div>
+      <small class="resumen-texto-gris text-capitalize">{{ state.nombreMesActual() }}</small>
+    </div>
+
+    @if (state.topProductosDelMes().length > 0) {
+      <div class="top-producto-ranking">
+        @for (item of state.topProductosDelMes(); track item.nombre; let i = $index) {
+          <div class="top-producto-row" [class.top-producto-row--first]="i === 0">
+            @if (item.img) {
+              <img [src]="item.img" [alt]="item.nombre" class="top-producto-img" />
+            } @else {
+              <div class="top-producto-img top-producto-img--placeholder" aria-hidden="true"></div>
+            }
+            <div class="flex-grow-1">
+              <p class="mb-0">
+                <span class="resumen-texto-gris me-1">{{ i + 1 }}.</span>
+                <strong class="text-white">{{ item.nombre }}</strong>
+              </p>
+              <small class="resumen-texto-gris">
+                <span class="text-success">{{ item.unidades }} {{ item.unidades === 1 ? 'unidad' : 'unidades' }}</span>
+                · {{ item.menciones }} {{ item.menciones === 1 ? 'venta' : 'ventas' }}
+                @if (item.categoria) {
+                  · <span class="text-capitalize">{{ item.categoria }}</span>
+                }
+              </small>
+            </div>
+          </div>
+        }
+      </div>
+    } @else {
+      <p class="resumen-texto-gris mb-0">
+        Todavía no hay productos reconocibles en el detalle de ventas de este mes.
+      </p>
     }
   </div>
 </div>

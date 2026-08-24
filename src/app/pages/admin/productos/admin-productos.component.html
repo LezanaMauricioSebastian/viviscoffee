@@ -5,48 +5,48 @@
 </button>
     </div>
 
-    @if (!state.loading && state.productos.length > 0) {
+    @if (!state.loading && state.productos().length > 0) {
 <div class="admin-toolbar mb-3">
   <input
     type="search"
     class="form-control form-control-sm admin-search"
     placeholder="Buscar por nombre, precio o descripción..."
-    [value]="state.filtroProductoBusqueda"
-    (input)="state.filtroProductoBusqueda = $any($event.target).value"
+    [value]="state.filtroProductoBusqueda()"
+    (input)="state.filtroProductoBusqueda.set($any($event.target).value)"
   >
   <select
     class="form-select form-select-sm admin-filter-select"
-    [value]="state.filtroProductoCategoria"
-    (change)="state.filtroProductoCategoria = $any($event.target).value"
+    [value]="state.filtroProductoCategoria()"
+    (change)="state.filtroProductoCategoria.set($any($event.target).value)"
   >
     <option value="">Todas las categorías</option>
     @for (c of state.categorias; track c) {
       <option [value]="c">{{ c }}</option>
     }
   </select>
-  @if (state.filtroProductoBusqueda || state.filtroProductoCategoria) {
+  @if (state.filtroProductoBusqueda() || state.filtroProductoCategoria()) {
     <button
       type="button"
       class="btn btn-outline-light btn-sm"
-      (click)="state.filtroProductoBusqueda = ''; state.filtroProductoCategoria = ''"
+      (click)="state.filtroProductoBusqueda.set(''); state.filtroProductoCategoria.set('')"
     >
       Limpiar filtros
     </button>
   }
 </div>
 <p class="text-white-50 small mb-2">
-  Mostrando {{ state.productosVisibles.length }} de {{ state.productos.length }} productos.
+  Mostrando {{ state.productosVisibles().length }} de {{ state.productos().length }} productos.
   Las flechas cambian el orden en la web pública.
 </p>
     }
 
     @if (state.loading) {
 <p class="text-white-50">Cargando productos...</p>
-    } @else if (state.productos.length === 0) {
+    } @else if (state.productos().length === 0) {
 <p class="text-white-50">
   No hay productos. Clic en "Importar desde Google Sheets" o "Nuevo producto".
 </p>
-    } @else if (state.productosVisibles.length === 0) {
+    } @else if (state.productosVisibles().length === 0) {
 <p class="text-warning">Ningún producto coincide con los filtros.</p>
     } @else {
 <div class="table-responsive">
@@ -61,7 +61,7 @@
       </tr>
     </thead>
     <tbody>
-      @for (p of state.productosVisibles; track p.id) {
+      @for (p of state.productosVisibles(); track p.id) {
         <tr>
           <td class="orden-cell">
             <div class="btn-group btn-group-sm">

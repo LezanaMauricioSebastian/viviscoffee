@@ -1,4 +1,6 @@
-import { Injectable, OnDestroy } from '@angular/core';
+import { Injectable, OnDestroy, signal, computed } from '@angular/core';
+import { parseVentaDetalle } from '../../../shared/utils/parse-venta-detalle';
+import { parsePrecio } from '../../../shared/utils/parse-precio';
 import { forkJoin } from 'rxjs';
 import * as Papa from 'papaparse';
 import { ProductosService, Producto } from '../../../core/services/productos.service';
@@ -51,10 +53,18 @@ type QuickVentaItem = {
   productoId: string;
   cantidad: number;
 };
+export type ProductoRankingMes = {
+  nombre: string;
+  categoria: string;
+  img: string;
+  unidades: number;
+  menciones: number;
+  montoEstimado: number;
+};
 
 @Injectable()
 export class AdminStateService implements OnDestroy {
-  periodo: Periodo = 'total';
+  readonly periodo = signal<Periodo>('total');
   periodoTendencia: '7d' | '30d' | '6m' = '30d';
   readonly periodoTendenciaOptions: { value: '7d' | '30d' | '6m'; label: string }[] = [
     { value: '7d', label: 'Últimos 7 días' },
@@ -67,8 +77,12 @@ export class AdminStateService implements OnDestroy {
   private tendenciaChart: Chart<'line'> | null = null;
   private chartRenderTimeout: ReturnType<typeof setTimeout> | null = null;
 
-  // Productos
-  productos: Producto[] = [];
+  // Productos / compras / ventas / config (signals)
+  readonly productos = signal<Producto[]>([]);
+  readonly compras = signal<CompraInsumo[]>([]);
+  readonly ventas = signal<Venta[]>([]);
+  readonly dashboardConfig = signal<AdminConfig>({ ...DEFAULT_ADMIN_CONFIG });
+
   categorias: string[] = [];
   loading = true;
   loadingConfig = true;
@@ -78,21 +92,26 @@ export class AdminStateService implements OnDestroy {
   success = '';
   showModal = false;
   editingId: string | null = null;
-  form: Partial<Producto> = { nombre: '', precio: '', descripcion: '', img: '', categoria: 'cafe' };
+  form: Partial<Producto> = {
+    nombre: '',
+    precio: '',
+
+    descripcion: '',
+    img: '',
+    categoria: 'cafe',
+  };
   subiendoImg = false;
-  filtroProductoBusqueda = '';
-  filtroProductoCategoria = '';
+  readonly filtroProductoBusqueda = signal('');
+  readonly filtroProductoCategoria = signal('');
   reordenandoProductoId: string | null = null;
-  filtroCompraBusqueda = '';
-  filtroVentaBusqueda = '';
-  dashboardConfig: AdminConfig = { ...DEFAULT_ADMIN_CONFIG };
+  readonly filtroCompraBusqueda = signal('');
+  readonly filtroVentaBusqueda = signal('');
   dashboardConfigForm: Omit<AdminConfig, 'id'> = {
     meta_ventas_mensual: 0,
     gastos_fijos_mensuales: 0,
   };
 
-  // Compras
-  compras: CompraInsumo[] = [];
+  // Compras UI
   loadingCompras = true;
   showModalCompra = false;
   editingCompraId: string | null = null;
@@ -126,8 +145,7 @@ export class AdminStateService implements OnDestroy {
     { value: 'meses', label: 'Meses' },
   ];
 
-  // Ventas
-  ventas: Venta[] = [];
+  // Ventas UI
   loadingVentas = true;
   showModalVenta = false;
   editingVentaId: string | null = null;
@@ -142,6 +160,254 @@ export class AdminStateService implements OnDestroy {
   savingRapido = false;
   formRapidoVenta = this.nuevoFormRapido();
   private montoRapidoAutollenado = true;
+
+  readonly comprasFiltradas = computed(() => this.filtrarPorPeriodo(this.compras()));
+  readonly ventasFiltradas = computed(() => this.filtrarPorPeriodo(this.ventas()));
+
+  readonly productosVisibles = computed(() => {
+    const q = this.normalizarBusqueda(this.filtroProductoBusqueda());
+    const categoria = this.filtroProductoCategoria();
+    return this.productos()
+      .filter((p) => {
+        if (categoria && p.categoria !== categoria) return false;
+        if (!q) return true;
+        const texto = [p.nombre, p.precio, p.descripcion, p.categoria].join(' ').toLowerCase();
+        return texto.includes(q);
+      })
+      .sort((a, b) => (a.orden ?? 0) - (b.orden ?? 0));
+  });
+
+  readonly comprasVisibles = computed(() => {
+    const q = this.normalizarBusqueda(this.filtroCompraBusqueda());
+    return this.comprasFiltradas().filter((c) => {
+      if (!q) return true;
+      const texto = [c.concepto, c.proveedor, c.notas, c.cantidad, c.unidad].join(' ').toLowerCase();
+      return texto.includes(q);
+    });
+  });
+
+  readonly ventasVisibles = computed(() => {
+    const q = this.normalizarBusqueda(this.filtroVentaBusqueda());
+    return this.ventasFiltradas().filter((v) => {
+      if (!q) return true;
+      const texto = [v.detalle, v.notas, String(v.monto)].join(' ').toLowerCase();
+      return texto.includes(q);
+    });
+  });
+
+  readonly productosParaRapido = computed(() =>
+    [...this.productos()].sort((a, b) =>
+      (a.nombre || '').localeCompare(b.nombre || '', 'es', { sensitivity: 'base' })
+    )
+  );
+
+  readonly ventasEsteMes = computed(() => {
+    const { inicio, fin } = this.getRangoMensual();
+    return this.ventas()
+      .filter((v) => {
+        const f = this.normalizarFecha(v.fecha);
+        return f && f >= inicio && f <= fin;
+      })
+      .reduce((sum, v) => sum + (Number(v.monto) || 0), 0);
+  });
+
+  readonly inversionInsumosEsteMes = computed(() => {
+    const { inicio, fin } = this.getRangoMensual();
+    return this.compras()
+      .filter((c) => {
+        const f = this.normalizarFecha(c.fecha);
+        return f && f >= inicio && f <= fin;
+      })
+      .reduce((sum, c) => sum + (Number(c.monto) || 0), 0);
+  });
+
+  readonly ventasMesAnterior = computed(() => {
+    const { inicio, fin } = this.getRangoMesAnterior();
+    return this.ventas()
+      .filter((v) => {
+        const f = this.normalizarFecha(v.fecha);
+        return f && f >= inicio && f <= fin;
+      })
+      .reduce((sum, v) => sum + (Number(v.monto) || 0), 0);
+  });
+
+  readonly comprasMesAnterior = computed(() => {
+    const { inicio, fin } = this.getRangoMesAnterior();
+    return this.compras()
+      .filter((c) => {
+        const f = this.normalizarFecha(c.fecha);
+        return f && f >= inicio && f <= fin;
+      })
+      .reduce((sum, c) => sum + (Number(c.monto) || 0), 0);
+  });
+
+  readonly gastosFijosMensuales = computed(
+    () => Number(this.dashboardConfig().gastos_fijos_mensuales) || 0
+  );
+
+  readonly metaVentasMensual = computed(
+    () => Number(this.dashboardConfig().meta_ventas_mensual) || 0
+  );
+
+  readonly flujoCajaNetoEsteMes = computed(
+    () => this.ventasEsteMes() - this.inversionInsumosEsteMes() - this.gastosFijosMensuales()
+  );
+
+  readonly flujoCajaEsteMes = computed(
+    () => this.ventasEsteMes() - this.inversionInsumosEsteMes()
+  );
+
+  readonly promedioVentaDiaria = computed(
+    () => this.ventasEsteMes() / this.diasTranscurridosMes()
+  );
+
+  readonly proyeccionVentasFinMes = computed(
+    () => this.promedioVentaDiaria() * this.diasDelMesActual()
+  );
+
+  readonly progresoMetaVentas = computed(() => {
+    const meta = this.metaVentasMensual();
+    if (meta <= 0) return 0;
+    return Math.min((this.ventasEsteMes() / meta) * 100, 100);
+  });
+
+  readonly montoFaltanteMeta = computed(() =>
+    Math.max(this.metaVentasMensual() - this.ventasEsteMes(), 0)
+  );
+
+  readonly proyeccionCumpleMeta = computed(() => {
+    const meta = this.metaVentasMensual();
+    return meta > 0 && this.proyeccionVentasFinMes() >= meta;
+  });
+
+  readonly variacionPorcentualVentas = computed(() => {
+    const actual = this.ventasEsteMes();
+    const anterior = this.ventasMesAnterior();
+    if (anterior <= 0) return null;
+    return ((actual - anterior) / anterior) * 100;
+  });
+
+  readonly variacionPorcentualCompras = computed(() => {
+    const actual = this.inversionInsumosEsteMes();
+    const anterior = this.comprasMesAnterior();
+    if (anterior <= 0) return null;
+    return ((actual - anterior) / anterior) * 100;
+  });
+
+  readonly ventasPorDiaEsteMes = computed(() => {
+    const { inicio, fin } = this.getRangoMensual();
+    const ventasPorDia: Record<string, number> = {};
+    this.ventas()
+      .filter((v) => {
+        const f = this.normalizarFecha(v.fecha);
+        return f && f >= inicio && f <= fin;
+      })
+      .forEach((v) => {
+        const f = this.normalizarFecha(v.fecha);
+        if (f) ventasPorDia[f] = (ventasPorDia[f] ?? 0) + (Number(v.monto) || 0);
+      });
+    return ventasPorDia;
+  });
+
+  readonly mejorDiaVentas = computed(() => {
+    const entries = Object.entries(this.ventasPorDiaEsteMes());
+    if (entries.length === 0) return null;
+    const [fecha, total] = entries.reduce((best, current) =>
+      current[1] > best[1] ? current : best
+    );
+    return { fecha, total };
+  });
+
+  readonly actividadReciente = computed(() => {
+    const ventas = this.ventas().map((v, index) => ({
+      id: v.id ?? `venta-${index}-${v.fecha}`,
+      fecha: this.normalizarFecha(v.fecha),
+      tipo: 'venta' as const,
+      titulo: 'Venta registrada',
+      detalle: v.detalle || v.notas || 'Sin detalle',
+      monto: Number(v.monto) || 0,
+    }));
+
+    const compras = this.compras().map((c, index) => ({
+      id: c.id ?? `compra-${index}-${c.fecha}`,
+      fecha: this.normalizarFecha(c.fecha),
+      tipo: 'compra' as const,
+      titulo: 'Compra de insumo',
+      detalle: c.proveedor ? `${c.concepto} - ${c.proveedor}` : c.concepto,
+      monto: Number(c.monto) || 0,
+    }));
+
+    return [...ventas, ...compras]
+      .sort((a, b) => b.fecha.localeCompare(a.fecha))
+      .slice(0, 6);
+  });
+
+  readonly rankingProductosDelMes = computed(() => {
+    const { inicio, fin } = this.getRangoMensual();
+    const ventasMes = this.ventas().filter((v) => {
+      const f = this.normalizarFecha(v.fecha);
+      return f && f >= inicio && f <= fin;
+    });
+    const catalogo = [...this.productos()]
+      .filter((p) => (p.nombre || '').trim().length >= 2)
+      .sort((a, b) => (b.nombre?.length || 0) - (a.nombre?.length || 0));
+
+    if (ventasMes.length === 0 || catalogo.length === 0) return [] as ProductoRankingMes[];
+
+    const contadores = new Map<
+      string,
+      { producto: Producto; unidades: number; menciones: number; montoEstimado: number }
+    >();
+
+    for (const venta of ventasMes) {
+      const items = parseVentaDetalle(venta.detalle);
+      if (items.length === 0) continue;
+      const matchedInVenta = new Set<string>();
+      const totalUnidades = items.reduce((s, i) => s + i.cantidad, 0) || 1;
+      const montoVenta = Number(venta.monto) || 0;
+
+      for (const item of items) {
+        const producto = this.matchProductoCatalogo(item.nombre, catalogo);
+        if (!producto) continue;
+        const key = producto.id || producto.nombre;
+        const share = (item.cantidad / totalUnidades) * montoVenta;
+        const prev = contadores.get(key);
+        if (prev) {
+          prev.unidades += item.cantidad;
+          prev.montoEstimado += share;
+          if (!matchedInVenta.has(key)) {
+            prev.menciones += 1;
+            matchedInVenta.add(key);
+          }
+        } else {
+          contadores.set(key, {
+            producto,
+            unidades: item.cantidad,
+            menciones: 1,
+            montoEstimado: share,
+          });
+          matchedInVenta.add(key);
+        }
+      }
+    }
+
+    return [...contadores.values()]
+      .map(({ producto, unidades, menciones, montoEstimado }) => ({
+        nombre: producto.nombre,
+        categoria: producto.categoria || '',
+        img: producto.img || '',
+        unidades,
+        menciones,
+        montoEstimado: Math.round(montoEstimado),
+      }))
+      .sort((a, b) => b.unidades - a.unidades || b.montoEstimado - a.montoEstimado);
+  });
+
+  readonly topProductosDelMes = computed(() => this.rankingProductosDelMes().slice(0, 5));
+
+  readonly nombreMesActual = computed(() =>
+    new Date().toLocaleDateString('es-AR', { month: 'long', year: 'numeric' })
+  );
 
   constructor(
     public prod: ProductosService,
@@ -204,54 +470,13 @@ export class AdminStateService implements OnDestroy {
   }
 
   filtrarPorPeriodo<T extends { fecha?: string | null }>(items: T[]): T[] {
-    if (this.periodo === 'total') return items;
+    const periodo = this.periodo();
+    if (periodo === 'total') return items;
     const { inicio, fin } =
-      this.periodo === 'mensual' ? this.getRangoMensual() : this.getRangoSemestral();
+      periodo === 'mensual' ? this.getRangoMensual() : this.getRangoSemestral();
     return items.filter((item) => {
       const f = this.normalizarFecha(item.fecha);
       return f && f >= inicio && f <= fin;
-    });
-  }
-
-  get comprasFiltradas(): CompraInsumo[] {
-    return this.filtrarPorPeriodo(this.compras);
-  }
-
-  get ventasFiltradas(): Venta[] {
-    return this.filtrarPorPeriodo(this.ventas);
-  }
-
-  get productosVisibles(): Producto[] {
-    const q = this.normalizarBusqueda(this.filtroProductoBusqueda);
-    return this.productos
-      .filter((p) => {
-        if (this.filtroProductoCategoria && p.categoria !== this.filtroProductoCategoria) {
-          return false;
-        }
-        if (!q) return true;
-        const texto = [p.nombre, p.precio, p.descripcion, p.categoria].join(' ').toLowerCase();
-        return texto.includes(q);
-      })
-      .sort((a, b) => (a.orden ?? 0) - (b.orden ?? 0));
-  }
-
-  get comprasVisibles(): CompraInsumo[] {
-    const q = this.normalizarBusqueda(this.filtroCompraBusqueda);
-    return this.comprasFiltradas.filter((c) => {
-      if (!q) return true;
-      const texto = [c.concepto, c.proveedor, c.notas, c.cantidad, c.unidad]
-        .join(' ')
-        .toLowerCase();
-      return texto.includes(q);
-    });
-  }
-
-  get ventasVisibles(): Venta[] {
-    const q = this.normalizarBusqueda(this.filtroVentaBusqueda);
-    return this.ventasFiltradas.filter((v) => {
-      if (!q) return true;
-      const texto = [v.detalle, v.notas, String(v.monto)].join(' ').toLowerCase();
-      return texto.includes(q);
     });
   }
 
@@ -260,9 +485,32 @@ export class AdminStateService implements OnDestroy {
   }
 
   productosEnCategoria(categoria: string): Producto[] {
-    return this.productos
+    return this.productos()
       .filter((p) => p.categoria === categoria)
       .sort((a, b) => (a.orden ?? 0) - (b.orden ?? 0));
+  }
+
+  private normalizarTextoProducto(texto: string): string {
+    return texto
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/×/g, 'x')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  private matchProductoCatalogo(nombreItem: string, catalogo: Producto[]): Producto | null {
+    const target = this.normalizarTextoProducto(nombreItem);
+    if (!target) return null;
+    const exact = catalogo.find((p) => this.normalizarTextoProducto(p.nombre || '') === target);
+    if (exact) return exact;
+    return (
+      catalogo.find((p) => {
+        const n = this.normalizarTextoProducto(p.nombre || '');
+        return n.length >= 2 && (target.includes(n) || n.includes(target));
+      }) ?? null
+    );
   }
 
   puedeMoverProducto(p: Producto, dir: -1 | 1): boolean {
@@ -308,7 +556,7 @@ export class AdminStateService implements OnDestroy {
   }
 
   exportarComprasCsv(): void {
-    const rows = this.comprasVisibles.map((c) => ({
+    const rows = this.comprasVisibles().map((c) => ({
       fecha: this.normalizarFecha(c.fecha),
       concepto: c.concepto,
       cantidad: c.cantidad ?? '',
@@ -321,12 +569,12 @@ export class AdminStateService implements OnDestroy {
       this.error = 'No hay compras para exportar con los filtros actuales.';
       return;
     }
-    this.descargarCsv(Papa.unparse(rows), `compras-${this.periodo}-${this.fechaExportacion()}.csv`);
+    this.descargarCsv(Papa.unparse(rows), `compras-${this.periodo()}-${this.fechaExportacion()}.csv`);
     this.success = `Se exportaron ${rows.length} compras.`;
   }
 
   exportarVentasCsv(): void {
-    const rows = this.ventasVisibles.map((v) => ({
+    const rows = this.ventasVisibles().map((v) => ({
       fecha: this.normalizarFecha(v.fecha),
       monto: Number(v.monto) || 0,
       detalle: v.detalle ?? '',
@@ -336,7 +584,7 @@ export class AdminStateService implements OnDestroy {
       this.error = 'No hay ventas para exportar con los filtros actuales.';
       return;
     }
-    this.descargarCsv(Papa.unparse(rows), `ventas-${this.periodo}-${this.fechaExportacion()}.csv`);
+    this.descargarCsv(Papa.unparse(rows), `ventas-${this.periodo()}-${this.fechaExportacion()}.csv`);
     this.success = `Se exportaron ${rows.length} ventas.`;
   }
 
@@ -357,7 +605,7 @@ export class AdminStateService implements OnDestroy {
   cargarConfig(): void {
     this.loadingConfig = true;
     this.adminConfigSvc.getConfig().subscribe((config) => {
-      this.dashboardConfig = config;
+      this.dashboardConfig.set(config);
       this.dashboardConfigForm = {
         meta_ventas_mensual: config.meta_ventas_mensual,
         gastos_fijos_mensuales: config.gastos_fijos_mensuales,
@@ -381,10 +629,11 @@ export class AdminStateService implements OnDestroy {
         this.error = res.error;
         return;
       }
-      this.dashboardConfig = res.config ?? { id: true, ...data };
+      const saved = res.config ?? { id: true, ...data };
+      this.dashboardConfig.set(saved);
       this.dashboardConfigForm = {
-        meta_ventas_mensual: this.dashboardConfig.meta_ventas_mensual,
-        gastos_fijos_mensuales: this.dashboardConfig.gastos_fijos_mensuales,
+        meta_ventas_mensual: saved.meta_ventas_mensual,
+        gastos_fijos_mensuales: saved.gastos_fijos_mensuales,
       };
       this.success = 'Configuración del dashboard guardada.';
     });
@@ -393,7 +642,7 @@ export class AdminStateService implements OnDestroy {
   cargar(): void {
     this.loading = true;
     this.prod.getProductos().subscribe((data) => {
-      this.productos = data;
+      this.productos.set(data);
       this.loading = false;
     });
   }
@@ -401,7 +650,7 @@ export class AdminStateService implements OnDestroy {
   cargarCompras(): void {
     this.loadingCompras = true;
     this.comprasSvc.getAll().subscribe((data) => {
-      this.compras = data;
+      this.compras.set(data);
       this.loadingCompras = false;
     });
   }
@@ -409,7 +658,7 @@ export class AdminStateService implements OnDestroy {
   cargarVentas(): void {
     this.loadingVentas = true;
     this.ventasSvc.getAll().subscribe((data) => {
-      this.ventas = data;
+      this.ventas.set(data);
       this.loadingVentas = false;
     });
   }
@@ -470,7 +719,7 @@ export class AdminStateService implements OnDestroy {
           legend: { display: false },
           title: {
             display: true,
-            text: `Ventas vs Compras (${this.periodo})`,
+            text: `Ventas vs Compras (${this.periodo()})`,
             color: '#fff',
           },
         },
@@ -520,7 +769,7 @@ export class AdminStateService implements OnDestroy {
 
     const ventasPorDia: Record<number, number> = {};
     for (let d = 1; d <= ultimoDia; d++) ventasPorDia[d] = 0;
-    this.ventas
+    this.ventas()
       .filter((v) => {
         const f = this.normalizarFecha(v.fecha);
         return f && f >= inicio && f <= fin;
@@ -887,24 +1136,14 @@ export class AdminStateService implements OnDestroy {
     };
   }
 
-  get productosParaRapido(): Producto[] {
-    return [...this.productos].sort((a, b) =>
-      (a.nombre || '').localeCompare(b.nombre || '', 'es', { sensitivity: 'base' })
-    );
-  }
-
   parsePrecioProducto(precio: string | null | undefined): number | null {
-    if (precio == null) return null;
-    const digits = String(precio).replace(/[^\d]/g, '');
-    if (!digits) return null;
-    const n = Number(digits);
-    return Number.isFinite(n) && n > 0 ? n : null;
+    return parsePrecio(precio);
   }
 
   estimadoMontoRapido(): number {
     return this.formRapidoVenta.items.reduce((sum, item) => {
       if (!item.productoId) return sum;
-      const p = this.productos.find((x) => x.id === item.productoId);
+      const p = this.productos().find((x) => x.id === item.productoId);
       const unit = this.parsePrecioProducto(p?.precio);
       if (unit == null) return sum;
       const qty = Math.max(1, Number(item.cantidad) || 1);
@@ -928,7 +1167,7 @@ export class AdminStateService implements OnDestroy {
     const parts = this.formRapidoVenta.items
       .filter((item) => item.productoId)
       .map((item) => {
-        const p = this.productos.find((x) => x.id === item.productoId);
+        const p = this.productos().find((x) => x.id === item.productoId);
         const nombre = p?.nombre?.trim() || 'Producto';
         const qty = Math.max(1, Number(item.cantidad) || 1);
         return qty > 1 ? `${qty}× ${nombre}` : nombre;
@@ -1025,31 +1264,19 @@ export class AdminStateService implements OnDestroy {
   }
 
   totalCompras(): number {
-    return this.comprasFiltradas.reduce((sum, c) => sum + (Number(c.monto) || 0), 0);
+    return this.comprasFiltradas().reduce((sum, c) => sum + (Number(c.monto) || 0), 0);
   }
 
   totalComprasVisibles(): number {
-    return this.comprasVisibles.reduce((sum, c) => sum + (Number(c.monto) || 0), 0);
+    return this.comprasVisibles().reduce((sum, c) => sum + (Number(c.monto) || 0), 0);
   }
 
   totalVentas(): number {
-    return this.ventasFiltradas.reduce((sum, v) => sum + (Number(v.monto) || 0), 0);
+    return this.ventasFiltradas().reduce((sum, v) => sum + (Number(v.monto) || 0), 0);
   }
 
   totalVentasVisibles(): number {
-    return this.ventasVisibles.reduce((sum, v) => sum + (Number(v.monto) || 0), 0);
-  }
-
-  gastosFijosMensuales(): number {
-    return Number(this.dashboardConfig.gastos_fijos_mensuales) || 0;
-  }
-
-  metaVentasMensual(): number {
-    return Number(this.dashboardConfig.meta_ventas_mensual) || 0;
-  }
-
-  flujoCajaNetoEsteMes(): number {
-    return this.ventasEsteMes() - this.inversionInsumosEsteMes() - this.gastosFijosMensuales();
+    return this.ventasVisibles().reduce((sum, v) => sum + (Number(v.monto) || 0), 0);
   }
 
   diasTranscurridosMes(): number {
@@ -1059,77 +1286,6 @@ export class AdminStateService implements OnDestroy {
   diasDelMesActual(): number {
     const now = new Date();
     return new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
-  }
-
-  promedioVentaDiaria(): number {
-    return this.ventasEsteMes() / this.diasTranscurridosMes();
-  }
-
-  proyeccionVentasFinMes(): number {
-    return this.promedioVentaDiaria() * this.diasDelMesActual();
-  }
-
-  progresoMetaVentas(): number {
-    const meta = this.metaVentasMensual();
-    if (meta <= 0) return 0;
-    return Math.min((this.ventasEsteMes() / meta) * 100, 100);
-  }
-
-  montoFaltanteMeta(): number {
-    return Math.max(this.metaVentasMensual() - this.ventasEsteMes(), 0);
-  }
-
-  proyeccionCumpleMeta(): boolean {
-    const meta = this.metaVentasMensual();
-    return meta > 0 && this.proyeccionVentasFinMes() >= meta;
-  }
-
-  ventasPorDiaEsteMes(): Record<string, number> {
-    const { inicio, fin } = this.getRangoMensual();
-    const ventasPorDia: Record<string, number> = {};
-    this.ventas
-      .filter((v) => {
-        const f = this.normalizarFecha(v.fecha);
-        return f && f >= inicio && f <= fin;
-      })
-      .forEach((v) => {
-        const f = this.normalizarFecha(v.fecha);
-        if (f) ventasPorDia[f] = (ventasPorDia[f] ?? 0) + (Number(v.monto) || 0);
-      });
-    return ventasPorDia;
-  }
-
-  mejorDiaVentas(): { fecha: string; total: number } | null {
-    const entries = Object.entries(this.ventasPorDiaEsteMes());
-    if (entries.length === 0) return null;
-    const [fecha, total] = entries.reduce((best, current) =>
-      current[1] > best[1] ? current : best
-    );
-    return { fecha, total };
-  }
-
-  actividadReciente(): DashboardActivity[] {
-    const ventas = this.ventas.map((v, index) => ({
-      id: v.id ?? `venta-${index}-${v.fecha}`,
-      fecha: this.normalizarFecha(v.fecha),
-      tipo: 'venta' as const,
-      titulo: 'Venta registrada',
-      detalle: v.detalle || v.notas || 'Sin detalle',
-      monto: Number(v.monto) || 0,
-    }));
-
-    const compras = this.compras.map((c, index) => ({
-      id: c.id ?? `compra-${index}-${c.fecha}`,
-      fecha: this.normalizarFecha(c.fecha),
-      tipo: 'compra' as const,
-      titulo: 'Compra de insumo',
-      detalle: c.proveedor ? `${c.concepto} - ${c.proveedor}` : c.concepto,
-      monto: Number(c.monto) || 0,
-    }));
-
-    return [...ventas, ...compras]
-      .sort((a, b) => b.fecha.localeCompare(a.fecha))
-      .slice(0, 6);
   }
 
   formatearFechaCorta(fecha: string): string {
@@ -1143,64 +1299,6 @@ export class AdminStateService implements OnDestroy {
   }
 
   // --- Bloque recuperación de inversión ---
-  inversionInsumosEsteMes(): number {
-    const { inicio, fin } = this.getRangoMensual();
-    return this.compras
-      .filter((c) => {
-        const f = this.normalizarFecha(c.fecha);
-        return f && f >= inicio && f <= fin;
-      })
-      .reduce((sum, c) => sum + (Number(c.monto) || 0), 0);
-  }
-
-  ventasEsteMes(): number {
-    const { inicio, fin } = this.getRangoMensual();
-    return this.ventas
-      .filter((v) => {
-        const f = this.normalizarFecha(v.fecha);
-        return f && f >= inicio && f <= fin;
-      })
-      .reduce((sum, v) => sum + (Number(v.monto) || 0), 0);
-  }
-
-  ventasMesAnterior(): number {
-    const { inicio, fin } = this.getRangoMesAnterior();
-    return this.ventas
-      .filter((v) => {
-        const f = this.normalizarFecha(v.fecha);
-        return f && f >= inicio && f <= fin;
-      })
-      .reduce((sum, v) => sum + (Number(v.monto) || 0), 0);
-  }
-
-  comprasMesAnterior(): number {
-    const { inicio, fin } = this.getRangoMesAnterior();
-    return this.compras
-      .filter((c) => {
-        const f = this.normalizarFecha(c.fecha);
-        return f && f >= inicio && f <= fin;
-      })
-      .reduce((sum, c) => sum + (Number(c.monto) || 0), 0);
-  }
-
-  flujoCajaEsteMes(): number {
-    return this.ventasEsteMes() - this.inversionInsumosEsteMes();
-  }
-
-  variacionPorcentualVentas(): number | null {
-    const actual = this.ventasEsteMes();
-    const anterior = this.ventasMesAnterior();
-    if (anterior <= 0) return null;
-    return ((actual - anterior) / anterior) * 100;
-  }
-
-  variacionPorcentualCompras(): number | null {
-    const actual = this.inversionInsumosEsteMes();
-    const anterior = this.comprasMesAnterior();
-    if (anterior <= 0) return null;
-    return ((actual - anterior) / anterior) * 100;
-  }
-
   hayDatosTendencia(): boolean {
     return this.datosTendenciaVentas().data.some((d) => d > 0);
   }
@@ -1223,7 +1321,7 @@ export class AdminStateService implements OnDestroy {
         const key = dd.toISOString().slice(0, 10);
         ventasPorDia[key] = 0;
       }
-      this.ventas
+      this.ventas()
         .filter((v) => {
           const f = this.normalizarFecha(v.fecha);
           return f && f >= inicio && f <= fin;
@@ -1248,7 +1346,7 @@ export class AdminStateService implements OnDestroy {
         const key = dd.toISOString().slice(0, 10);
         ventasPorDia[key] = 0;
       }
-      this.ventas
+      this.ventas()
         .filter((v) => {
           const f = this.normalizarFecha(v.fecha);
           return f && f >= inicio && f <= fin;
@@ -1273,7 +1371,7 @@ export class AdminStateService implements OnDestroy {
         const key = `${m.getFullYear()}-${String(m.getMonth() + 1).padStart(2, '0')}`;
         ventasPorMes[key] = 0;
       }
-      this.ventas
+      this.ventas()
         .filter((v) => {
           const f2 = this.normalizarFecha(v.fecha);
           return f2 && f2 >= inicio && f2 <= fin;

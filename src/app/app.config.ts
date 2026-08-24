@@ -1,8 +1,4 @@
-import {
-  ApplicationConfig,
-  importProvidersFrom,
-  provideZonelessChangeDetection,
-} from '@angular/core';
+import { ApplicationConfig, importProvidersFrom } from '@angular/core';
 import { provideRouter } from '@angular/router';
 import { provideHttpClient, withFetch } from '@angular/common/http';
 import { PRECONNECT_CHECK_BLOCKLIST } from '@angular/common';
@@ -15,7 +11,6 @@ import { environment } from '../environments/environment';
 // for Supabase Storage (absolute URLs use the default passthrough loader).
 export const appConfig: ApplicationConfig = {
   providers: [
-    provideZonelessChangeDetection(),
     provideRouter(routes),
     provideHttpClient(withFetch()),
     importProvidersFrom(BrowserAnimationsModule),

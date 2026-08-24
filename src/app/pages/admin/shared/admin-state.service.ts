@@ -57,6 +57,7 @@ type DashboardActivity = {
 type QuickVentaItem = {
   productoId: string;
   cantidad: number;
+  query: string;
 };
 export type ProductoRankingMes = {
   nombre: string;
@@ -164,8 +165,10 @@ export class AdminStateService implements OnDestroy {
     detalle: '',
     notas: '',
   };
+  formVentaItems: QuickVentaItem[] = [this.nuevoItemVenta()];
+  private montoVentaAutollenado = true;
 
-  /** Carga rápida en Resumen (enfoque mensual / hobby) */
+  /** Carga rápida en Resumen (enfoque mensual / hobby) — UI removida; helpers reutilizados en modal ventas */
   savingRapido = false;
   formRapidoVenta = this.nuevoFormRapido();
   private montoRapidoAutollenado = true;
@@ -1151,6 +1154,10 @@ export class AdminStateService implements OnDestroy {
   }
 
   // --- Ventas ---
+  private nuevoItemVenta(): QuickVentaItem {
+    return { productoId: '', cantidad: 1, query: '' };
+  }
+
   abrirNuevoVenta(): void {
     this.showModalVenta = true;
     this.editingVentaId = null;
@@ -1160,6 +1167,8 @@ export class AdminStateService implements OnDestroy {
       detalle: '',
       notas: '',
     };
+    this.formVentaItems = [this.nuevoItemVenta()];
+    this.montoVentaAutollenado = true;
     this.error = '';
     this.success = '';
   }
@@ -1171,8 +1180,115 @@ export class AdminStateService implements OnDestroy {
     if (v.fecha && typeof v.fecha === 'string' && v.fecha.length > 10) {
       this.formVenta.fecha = (v.fecha as string).slice(0, 10);
     }
+    this.formVentaItems = this.itemsDesdeDetalle(v.detalle);
+    this.montoVentaAutollenado = false;
     this.error = '';
     this.success = '';
+  }
+
+  private itemsDesdeDetalle(detalle: string | null | undefined): QuickVentaItem[] {
+    const parsed = parseVentaDetalle(detalle);
+    if (parsed.length === 0) return [this.nuevoItemVenta()];
+
+    const items = parsed.map((part) => {
+      const match = this.productos().find(
+        (p) => p.nombre.trim().toLowerCase() === part.nombre.trim().toLowerCase()
+      );
+      return {
+        productoId: match?.id ?? '',
+        cantidad: Math.max(1, part.cantidad || 1),
+        query: match?.nombre ?? part.nombre,
+      };
+    });
+    return items.length > 0 ? items : [this.nuevoItemVenta()];
+  }
+
+  agregarProductoVenta(): void {
+    this.formVentaItems = [...this.formVentaItems, this.nuevoItemVenta()];
+  }
+
+  quitarProductoVenta(index: number): void {
+    if (this.formVentaItems.length <= 1) {
+      this.formVentaItems = [this.nuevoItemVenta()];
+      this.onVentaItemsChange();
+      return;
+    }
+    this.formVentaItems = this.formVentaItems.filter((_, i) => i !== index);
+    this.onVentaItemsChange();
+  }
+
+  productosSugeridosVenta(query: string, productoId: string): Producto[] {
+    const q = this.normalizarBusqueda(query);
+    const list = this.productosParaRapido();
+    if (!q) return list.slice(0, 8);
+    return list
+      .filter((p) => {
+        if (p.id === productoId) return true;
+        return (p.nombre || '').toLowerCase().includes(q);
+      })
+      .slice(0, 10);
+  }
+
+  seleccionarProductoVenta(index: number, p: Producto): void {
+    const items = [...this.formVentaItems];
+    const current = items[index];
+    if (!current) return;
+    items[index] = {
+      ...current,
+      productoId: p.id ?? '',
+      query: p.nombre,
+    };
+    this.formVentaItems = items;
+    this.onVentaItemsChange();
+  }
+
+  onVentaItemQueryChange(index: number, query: string): void {
+    const items = [...this.formVentaItems];
+    const current = items[index];
+    if (!current) return;
+    const exact = this.productos().find(
+      (p) => p.nombre.trim().toLowerCase() === query.trim().toLowerCase()
+    );
+    items[index] = {
+      ...current,
+      query,
+      productoId: exact?.id ?? '',
+    };
+    this.formVentaItems = items;
+    this.onVentaItemsChange();
+  }
+
+  onVentaItemsChange(): void {
+    if (!this.montoVentaAutollenado) return;
+    const estimado = this.estimadoMontoVenta();
+    this.formVenta.monto = estimado;
+  }
+
+  onMontoVentaManual(): void {
+    this.montoVentaAutollenado = false;
+  }
+
+  estimadoMontoVenta(): number {
+    return this.formVentaItems.reduce((sum, item) => {
+      if (!item.productoId) return sum;
+      const p = this.productos().find((x) => x.id === item.productoId);
+      const qty = Math.max(1, Number(item.cantidad) || 1);
+      const unit = this.unitarioProductoRapido(p, qty);
+      if (unit == null) return sum;
+      return sum + unit * qty;
+    }, 0);
+  }
+
+  armarDetalleVenta(): string {
+    const parts = this.formVentaItems
+      .filter((item) => item.productoId || item.query.trim())
+      .map((item) => {
+        const p = this.productos().find((x) => x.id === item.productoId);
+        const nombre = p?.nombre?.trim() || item.query.trim() || 'Producto';
+        const qty = Math.max(1, Number(item.cantidad) || 1);
+        return qty > 1 ? `${qty}× ${nombre}` : nombre;
+      });
+    return parts.join(' · ');
   }
 
   private nuevoFormRapido(): {
@@ -1185,10 +1301,7 @@ export class AdminStateService implements OnDestroy {
       fecha: new Date().toISOString().slice(0, 10),
       monto: 0,
       notas: '',
-      items: [
-        { productoId: '', cantidad: 1 },
-        { productoId: '', cantidad: 1 },
-      ],
+      items: [this.nuevoItemVenta(), this.nuevoItemVenta()],
     };
   }
 
@@ -1293,10 +1406,11 @@ export class AdminStateService implements OnDestroy {
       this.error = 'El monto debe ser mayor a 0';
       return;
     }
+    const detalle = this.armarDetalleVenta() || (this.formVenta?.detalle ?? '');
     const data: Omit<Venta, 'id'> = {
       fecha: this.formVenta!.fecha!,
       monto,
-      detalle: this.formVenta?.detalle ?? '',
+      detalle,
       notas: this.formVenta?.notas ?? '',
     };
     if (this.editingVentaId) {
@@ -1334,6 +1448,8 @@ export class AdminStateService implements OnDestroy {
   cerrarModalVenta(): void {
     this.showModalVenta = false;
     this.editingVentaId = null;
+    this.formVentaItems = [this.nuevoItemVenta()];
+    this.montoVentaAutollenado = true;
   }
 
   totalCompras(): number {

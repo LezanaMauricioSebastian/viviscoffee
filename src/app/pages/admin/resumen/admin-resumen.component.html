@@ -51,135 +51,18 @@
 
 <div class="card resumen-card mb-4">
   <div class="card-body">
-    <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
-      <div>
-        <h6 class="card-title text-info mb-1">Carga rápida del mes</h6>
-        <p class="resumen-texto-gris mb-0">Anotá una venta con monto y hasta 2 productos. Ideal para ir cargando el mes sin abrir Ventas.</p>
-      </div>
-      @if (state.estimadoMontoRapido() > 0) {
-        <small class="resumen-texto-gris">Estimado catálogo: ${{ state.estimadoMontoRapido() | number }}</small>
-      }
-    </div>
-
-    <div class="row g-2 align-items-end">
-      <div class="col-6 col-md-3 col-lg-2">
-        <label class="form-label small text-white-50">Fecha</label>
-        <input type="date" class="form-control form-control-sm" [(ngModel)]="state.formRapidoVenta.fecha" name="rapidoFecha" />
-      </div>
-      <div class="col-6 col-md-3 col-lg-2">
-        <label class="form-label small text-white-50">Monto ($)</label>
-        <input
-          type="number"
-          class="form-control form-control-sm"
-          min="0"
-          step="100"
-          [(ngModel)]="state.formRapidoVenta.monto"
-          (input)="state.onMontoRapidoManual()"
-          name="rapidoMonto"
-          placeholder="0"
-        />
-      </div>
-      <div class="col-12 col-md-6 col-lg-3">
-        <label class="form-label small text-white-50">Nota / cliente (opcional)</label>
-        <input
-          type="text"
-          class="form-control form-control-sm"
-          [(ngModel)]="state.formRapidoVenta.notas"
-          name="rapidoNotas"
-          placeholder="ej. tía Andrea, Sincer"
-        />
-      </div>
-      <div class="col-12 col-lg-5 d-flex flex-wrap gap-2 justify-content-lg-end">
-        <button
-          type="button"
-          class="btn btn-success btn-sm"
-          (click)="state.guardarVentaRapida()"
-          [disabled]="state.savingRapido"
-        >
-          {{ state.savingRapido ? 'Guardando...' : 'Registrar venta' }}
-        </button>
-      </div>
-    </div>
-
-    <div class="rapido-items mt-3">
-      @for (item of state.formRapidoVenta.items; track item; let i = $index) {
-        <div class="row g-2 align-items-end mb-2">
-          <div class="col-8 col-md-9">
-            <label class="form-label small text-white-50">Producto {{ i + 1 }}</label>
-            <select
-              class="form-select form-select-sm"
-              [(ngModel)]="item.productoId"
-              (ngModelChange)="state.onItemRapidoChange()"
-              [name]="'rapidoProd' + i"
-            >
-              <option value="">— Opcional —</option>
-              @for (p of state.productosParaRapido(); track p.id) {
-                <option [value]="p.id">{{ p.nombre }} · {{ state.formatPrecioLabel(p) }}</option>
-              }
-            </select>
-          </div>
-          <div class="col-4 col-md-3">
-            <label class="form-label small text-white-50">Cant.</label>
-            <input
-              type="number"
-              class="form-control form-control-sm"
-              min="1"
-              step="1"
-              [(ngModel)]="item.cantidad"
-              (ngModelChange)="state.onItemRapidoChange()"
-              [name]="'rapidoQty' + i"
-            />
-          </div>
-        </div>
-      }
-    </div>
-
-    @if (state.armarDetalleRapido()) {
-      <p class="resumen-texto-gris small mb-0 mt-1">Detalle: {{ state.armarDetalleRapido() }}</p>
-    }
-  </div>
-</div>
-
-<div class="card resumen-card mb-4">
-  <div class="card-body">
-    <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
+    <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-2">
       <div>
         <h6 class="card-title text-info mb-1">Lo más vendido este mes</h6>
-        <p class="resumen-texto-gris mb-0">Top 5 según el detalle de las ventas del mes.</p>
+        <p class="resumen-texto-gris mb-0">
+          Ranking por producto cuando las ventas se carguen con ítems del catálogo.
+        </p>
       </div>
-      <small class="resumen-texto-gris text-capitalize">{{ state.nombreMesActual() }}</small>
+      <span class="badge text-bg-secondary">Próximamente</span>
     </div>
-
-    @if (state.topProductosDelMes().length > 0) {
-      <div class="top-producto-ranking">
-        @for (item of state.topProductosDelMes(); track item.nombre; let i = $index) {
-          <div class="top-producto-row" [class.top-producto-row--first]="i === 0">
-            @if (item.img) {
-              <img [src]="item.img" [alt]="item.nombre" class="top-producto-img" />
-            } @else {
-              <div class="top-producto-img top-producto-img--placeholder" aria-hidden="true"></div>
-            }
-            <div class="flex-grow-1">
-              <p class="mb-0">
-                <span class="resumen-texto-gris me-1">{{ i + 1 }}.</span>
-                <strong class="text-white">{{ item.nombre }}</strong>
-              </p>
-              <small class="resumen-texto-gris">
-                <span class="text-success">{{ item.unidades }} {{ item.unidades === 1 ? 'unidad' : 'unidades' }}</span>
-                · {{ item.menciones }} {{ item.menciones === 1 ? 'venta' : 'ventas' }}
-                @if (item.categoria) {
-                  · <span class="text-capitalize">{{ item.categoria }}</span>
-                }
-              </small>
-            </div>
-          </div>
-        }
-      </div>
-    } @else {
-      <p class="resumen-texto-gris mb-0">
-        Todavía no hay productos reconocibles en el detalle de ventas de este mes.
-      </p>
-    }
+    <p class="resumen-texto-gris mb-0 small">
+      Hoy el detalle de ventas es libre (cliente + producto mezclado) y no alcanza para inferir un top confiable.
+    </p>
   </div>
 </div>
 

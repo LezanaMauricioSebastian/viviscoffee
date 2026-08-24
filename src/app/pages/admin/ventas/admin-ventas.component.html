@@ -83,12 +83,86 @@
       <input type="date" class="form-control" [(ngModel)]="state.formVenta.fecha" />
     </div>
     <div class="mb-3">
-      <label class="form-label">Monto ($) *</label>
-      <input type="number" class="form-control" [(ngModel)]="state.formVenta.monto" placeholder="0" min="0" step="0.01" />
+      <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+        <label class="form-label mb-0">Productos</label>
+        <button type="button" class="btn btn-outline-info btn-sm" (click)="state.agregarProductoVenta()">+ Agregar producto</button>
+      </div>
+      @for (item of state.formVentaItems; track i; let i = $index) {
+        <div class="venta-item-row mb-2">
+          <div class="row g-2 align-items-start">
+            <div class="col-8 col-md-9">
+              <div class="venta-producto-picker">
+                <input
+                  type="search"
+                  class="form-control"
+                  [ngModel]="item.query"
+                  (ngModelChange)="state.onVentaItemQueryChange(i, $event)"
+                  [name]="'ventaProdQuery' + i"
+                  placeholder="Buscar producto..."
+                  autocomplete="off"
+                />
+                @if (item.query && !item.productoId) {
+                  <ul class="venta-producto-suggestions">
+                    @for (p of state.productosSugeridosVenta(item.query, item.productoId); track p.id) {
+                      <li>
+                        <button type="button" class="venta-producto-suggestion" (click)="state.seleccionarProductoVenta(i, p)">
+                          <span>{{ p.nombre }}</span>
+                          <small class="text-white-50">{{ state.formatPrecioLabel(p) }}</small>
+                        </button>
+                      </li>
+                    } @empty {
+                      <li class="venta-producto-empty">Sin coincidencias</li>
+                    }
+                  </ul>
+                }
+                @if (item.productoId) {
+                  <small class="text-success">Seleccionado del catálogo</small>
+                }
+              </div>
+            </div>
+            <div class="col-2 col-md-2">
+              <input
+                type="number"
+                class="form-control"
+                min="1"
+                step="1"
+                [(ngModel)]="item.cantidad"
+                (ngModelChange)="state.onVentaItemsChange()"
+                [name]="'ventaQty' + i"
+                title="Cantidad"
+              />
+            </div>
+            <div class="col-2 col-md-1 d-flex">
+              <button
+                type="button"
+                class="btn btn-outline-danger btn-sm w-100"
+                (click)="state.quitarProductoVenta(i)"
+                title="Quitar"
+              >
+                ×
+              </button>
+            </div>
+          </div>
+        </div>
+      }
+      @if (state.armarDetalleVenta()) {
+        <p class="resumen-texto-gris small mb-0 mt-1">Detalle: {{ state.armarDetalleVenta() }}</p>
+      }
     </div>
     <div class="mb-3">
-      <label class="form-label">Detalle</label>
-      <input type="text" class="form-control" [(ngModel)]="state.formVenta.detalle" placeholder="ej. 2 cafés, 1 cookie" />
+      <label class="form-label">Monto ($) *</label>
+      <input
+        type="number"
+        class="form-control"
+        [(ngModel)]="state.formVenta.monto"
+        (input)="state.onMontoVentaManual()"
+        placeholder="0"
+        min="0"
+        step="0.01"
+      />
+      @if (state.estimadoMontoVenta() > 0) {
+        <small class="resumen-texto-gris">Suma catálogo: ${{ state.estimadoMontoVenta() | number }} (editable)</small>
+      }
     </div>
     <div class="mb-3">
       <label class="form-label">Notas</label>

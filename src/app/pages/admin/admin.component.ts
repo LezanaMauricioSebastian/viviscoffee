@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, ViewChild, ElementRef } from '@angular/core';
+import { Component, OnInit, OnDestroy, ViewChild, ElementRef, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
@@ -57,11 +57,11 @@ type QuickVentaItem = {
 };
 
 @Component({
-  selector: 'app-admin',
-  standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule],
-  templateUrl: './admin.component.html',
-  styleUrl: './admin.component.css',
+    selector: 'app-admin',
+    imports: [CommonModule, FormsModule, RouterModule],
+    templateUrl: './admin.component.html',
+    changeDetection: ChangeDetectionStrategy.Eager,
+    styleUrl: './admin.component.css'
 })
 export class AdminComponent implements OnInit, OnDestroy {
   tab: Tab = 'resumen';

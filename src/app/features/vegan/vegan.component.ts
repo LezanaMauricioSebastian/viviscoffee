@@ -1,9 +1,9 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ChangeDetectionStrategy } from '@angular/core';
 import { ProductosService } from '../../core/services/productos.service';
 
 @Component({
-  selector: 'app-vegan',
-  template: `
+    selector: 'app-vegan',
+    template: `
     <app-productos-generico
       [titulo]="'Vegan'"
       [productos]="vegan"
@@ -11,6 +11,8 @@ import { ProductosService } from '../../core/services/productos.service';
       (productosChange)="cargar()"
     ></app-productos-generico>
   `,
+    changeDetection: ChangeDetectionStrategy.Eager,
+    standalone: false
 })
 export class VeganComponent implements OnInit {
   vegan: any[] = [];

@@ -1,11 +1,11 @@
-import { Component } from '@angular/core';
+import { Component, ChangeDetectionStrategy } from '@angular/core';
 
 @Component({
-  selector: 'app-whatsapp-widget',
-  standalone: true,
-  imports: [],
-  templateUrl: './whatsapp-widget.component.html',
-  styleUrl: './whatsapp-widget.component.css'
+    selector: 'app-whatsapp-widget',
+    imports: [],
+    templateUrl: './whatsapp-widget.component.html',
+    changeDetection: ChangeDetectionStrategy.Eager,
+    styleUrl: './whatsapp-widget.component.css'
 })
 
 export class WhatsappWidgetComponent {

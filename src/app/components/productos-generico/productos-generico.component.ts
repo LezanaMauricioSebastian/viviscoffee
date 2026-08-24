@@ -2,6 +2,7 @@ import { Component, EventEmitter, Input, Output, ChangeDetectionStrategy } from 
 import { forkJoin } from 'rxjs';
 import { AuthService } from '../../core/services/auth.service';
 import { ProductosService, Producto } from '../../core/services/productos.service';
+import { resolveImageUrl } from '../../shared/utils/resolve-image-url';
 
 @Component({
     selector: 'app-productos-generico',
@@ -17,6 +18,8 @@ export class ProductosGenericoComponent {
   /** Categoría de la sección (para crear productos y contexto admin) */
   @Input() categoria = '';
   @Output() productosChange = new EventEmitter<void>();
+
+  readonly resolveImageUrl = resolveImageUrl;
 
   categorias: string[] = [];
   showModal = false;

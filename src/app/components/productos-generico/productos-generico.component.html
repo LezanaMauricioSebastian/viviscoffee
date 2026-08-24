@@ -81,7 +81,20 @@
                 </button>
               </div>
             }
-            <img [src]="item.img" class="card-img-top img-escalada" [alt]="item.nombre" />
+            <div class="producto-img-wrap">
+              @defer (on viewport) {
+                <img
+                  [ngSrc]="resolveImageUrl(item.img)"
+                  width="400"
+                  height="280"
+                  class="card-img-top img-escalada"
+                  [alt]="item.nombre"
+                  sizes="(max-width: 767px) 100vw, 33vw"
+                />
+              } @placeholder {
+                <div class="producto-img-skeleton" aria-hidden="true"></div>
+              }
+            </div>
             <div class="card-body">
               <h5 class="card-title">{{ item.nombre }}</h5>
               <p class="card-text">{{ item.descripcion }}</p>
@@ -128,7 +141,15 @@
             />
             <input type="text" class="form-control" [(ngModel)]="form.img" placeholder="O pegá una URL" />
             @if (form.img) {
-              <img [src]="form.img" alt="Vista previa" class="producto-preview mt-2" />
+              @for (src of [resolveImageUrl(form.img)]; track src) {
+                <img
+                  [ngSrc]="src"
+                  width="200"
+                  height="120"
+                  alt="Vista previa"
+                  class="producto-preview mt-2"
+                />
+              }
             }
           </div>
           <div class="mb-3">

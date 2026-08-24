@@ -128,7 +128,16 @@
       </div>
       <input type="text" class="form-control mt-1" [(ngModel)]="state.form.img" placeholder="O pegá una URL" />
       @if (state.form.img) {
-        <img [src]="state.form.img" alt="Vista previa" class="mt-2 rounded" style="max-height: 120px; max-width: 100%; object-fit: contain" />
+        @for (src of [resolveImageUrl(state.form.img)]; track src) {
+          <img
+            [ngSrc]="src"
+            width="200"
+            height="120"
+            alt="Vista previa"
+            class="mt-2 rounded"
+            style="max-height: 120px; max-width: 100%; object-fit: contain"
+          />
+        }
       }
     </div>
     <div class="mb-3">

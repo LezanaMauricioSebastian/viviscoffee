@@ -1,9 +1,9 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ChangeDetectionStrategy } from '@angular/core';
 import { ProductosService } from '../../core/services/productos.service';
 
 @Component({
-  selector: 'app-salado',
-  template: `
+    selector: 'app-salado',
+    template: `
     <app-productos-generico
       [titulo]="'Salado'"
       [productos]="salado"
@@ -11,6 +11,8 @@ import { ProductosService } from '../../core/services/productos.service';
       (productosChange)="cargar()"
     ></app-productos-generico>
   `,
+    changeDetection: ChangeDetectionStrategy.Eager,
+    standalone: false
 })
 export class SaladoComponent implements OnInit {
   salado: any[] = [];

@@ -1,5 +1,5 @@
-import { Component } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, ChangeDetectionStrategy } from '@angular/core';
+
 import { RouterOutlet } from '@angular/router';
 import { NavbarComponent } from './shared/navbar/navbar.component';
 import { FooterComponent } from './shared/footer/footer.component';
@@ -13,12 +13,12 @@ import { LocationStrategy, HashLocationStrategy } from '@angular/common';
 import { WhatsappWidgetComponent } from './shared/whatsapp-widget/whatsapp-widget.component';
 
 @Component({
-  selector: 'app-root',
-  standalone: true,
-  imports: [CommonModule, RouterOutlet, NavbarComponent, FooterComponent, MatToolbarModule, MatButtonModule, MatIconModule, MatSidenavModule, MatListModule, LayoutModule, WhatsappWidgetComponent],
-  templateUrl: './app.component.html',
-  styleUrl: './app.component.css',
-  providers: [{ provide: LocationStrategy, useClass: HashLocationStrategy }]
+    selector: 'app-root',
+    imports: [RouterOutlet, NavbarComponent, FooterComponent, MatToolbarModule, MatButtonModule, MatIconModule, MatSidenavModule, MatListModule, LayoutModule, WhatsappWidgetComponent],
+    templateUrl: './app.component.html',
+    styleUrl: './app.component.css',
+    changeDetection: ChangeDetectionStrategy.Eager,
+    providers: [{ provide: LocationStrategy, useClass: HashLocationStrategy }]
 })
 export class AppComponent {
   title = 'vivis';

@@ -1,11 +1,11 @@
-import { Component } from '@angular/core';
+import { Component, ChangeDetectionStrategy } from '@angular/core';
 
 @Component({
-  selector: 'app-about',
-  standalone: true,
-  imports: [],
-  templateUrl: './about.component.html',
-  styleUrl: './about.component.css'
+    selector: 'app-about',
+    imports: [],
+    templateUrl: './about.component.html',
+    changeDetection: ChangeDetectionStrategy.Eager,
+    styleUrl: './about.component.css'
 })
 export class AboutComponent {
 

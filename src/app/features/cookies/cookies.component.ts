@@ -1,9 +1,9 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ChangeDetectionStrategy } from '@angular/core';
 import { ProductosService } from '../../core/services/productos.service';
 
 @Component({
-  selector: 'app-cookies',
-  template: `
+    selector: 'app-cookies',
+    template: `
     <app-productos-generico
       [titulo]="'Cookies'"
       [texto]='"Nuestras Deliciosas Cookies se venden apartir de las 4 unidades y las podes combinar como quieras !"'
@@ -12,6 +12,8 @@ import { ProductosService } from '../../core/services/productos.service';
       (productosChange)="cargar()"
     ></app-productos-generico>
   `,
+    changeDetection: ChangeDetectionStrategy.Eager,
+    standalone: false
 })
 export class CookiesComponent implements OnInit {
   cookies: any[] = [];

@@ -1,8 +1,8 @@
 import { ProductosService } from '../../core/services/productos.service';
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ChangeDetectionStrategy } from '@angular/core';
 @Component({
-  selector: 'app-cafe',
-  template: `
+    selector: 'app-cafe',
+    template: `
     <app-productos-generico
       [titulo]="'Cafés'"
       [productos]="cafes"
@@ -10,6 +10,8 @@ import { Component, OnInit } from '@angular/core';
       (productosChange)="cargar()"
     ></app-productos-generico>
   `,
+    changeDetection: ChangeDetectionStrategy.Eager,
+    standalone: false
 })
 export class CafeComponent implements OnInit {
   cafes: any[] = [];

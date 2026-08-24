@@ -1,12 +1,14 @@
-import { Component, EventEmitter, Input, Output } from '@angular/core';
+import { Component, EventEmitter, Input, Output, ChangeDetectionStrategy } from '@angular/core';
 import { forkJoin } from 'rxjs';
 import { AuthService } from '../../core/services/auth.service';
 import { ProductosService, Producto } from '../../core/services/productos.service';
 
 @Component({
-  selector: 'app-productos-generico',
-  templateUrl: './productos-generico.component.html',
-  styleUrls: ['./productos-generico.component.css'],
+    selector: 'app-productos-generico',
+    templateUrl: './productos-generico.component.html',
+    styleUrls: ['./productos-generico.component.css'],
+    changeDetection: ChangeDetectionStrategy.Eager,
+    standalone: false
 })
 export class ProductosGenericoComponent {
   @Input() titulo = '';
